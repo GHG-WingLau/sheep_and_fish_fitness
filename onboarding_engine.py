@@ -3,17 +3,7 @@ from datetime import datetime
 
 def process_onboarding(data):
     """
-    data = {
-        'email': str,
-        'username': str,
-        'age_bucket': str, # e.g. '60-64'
-        'red_flags': list, # e.g. ['chest_pain']
-        'sarc_f': {'strength': 0, 'walking': 0, 'rise': 0, 'stairs': 0, 'falls': 0},
-        'gender': 'male' or 'female',
-        'calf_cm': float,
-        'single_leg_seconds': float,
-        'deep_squat': str # 'full', 'partial', 'chair_touch', 'unable'
-    }
+    Processes the onboarding data and returns a result dictionary.
     """
     # 1. Check Red Flags
     if data['red_flags']:
@@ -54,8 +44,8 @@ def process_onboarding(data):
     total = sarc_sum + calf_score + single_score + squat_score
 
     # 7. Determine Level
-    level = 'Level 4'  # default
-    age_num = int(age.split('-')[0])  # gets 60, 65, etc.
+    level = 'Level 4'
+    age_num = int(age.split('-')[0])
 
     if age_num >= 80:
         level = 'Level 1'
@@ -72,9 +62,9 @@ def process_onboarding(data):
         else:
             level = 'Level 3'
     elif total >= 0:
-        level = 'Level 4' # 0-2
+        level = 'Level 4'
 
-    # 8. Generate Overview & Expectation Paragraphs
+    # 8. Generate Overview & Expectation
     level_desc = {
         'Level 1': 'very low intensity. Seated marching, pumps, Kegels, and lying stretches. Max 15 mins/day.',
         'Level 2': 'low intensity. Seated and lying exercises with chair support for standing moves. 30 mins/day.',
@@ -82,26 +72,22 @@ def process_onboarding(data):
         'Level 4': 'standard intensity. Full dynamic exercises with progression to Weeks 3-4. 30 mins/day.'
     }
     
-    if level in level_desc:
-        intensity_text = level_desc[level]
-    else:
-        intensity_text = "requires medical clearance before starting."
-
+    intensity_text = level_desc.get(level, "requires medical clearance.")
+    
     overview = (
         f"Based on your assessment (Total Score: {total}/17), you are recommended for {level}. "
         f"This means {intensity_text} "
-        f"Your balance (Single-leg: {sec}s) and squat mobility ({data['deep_squat'].replace('_', ' ')}) were key factors in this decision."
+        f"Your balance (Single-leg: {sec}s) and squat mobility ({data['deep_squat'].replace('_', ' ')}) were key factors."
     )
 
     expectation = (
         "With consistent daily 30-minute training (adjusted to your level), most participants see meaningful improvements within 4 weeks: "
-        "better balance (longer single-leg stands), easier sit-to-stand transitions, reduced lower back tension, and greater confidence in daily activities like walking and climbing stairs. "
+        "better balance (longer single-leg stands), easier sit-to-stand transitions, reduced lower back tension, "
+        "and greater confidence in daily activities like walking and climbing stairs. "
         "Progress is gradual—listen to your body and use the extra rest days when needed."
     )
 
     return {
-        'email': data['email'],
-        'username': data['username'],
         'level': level,
         'total_score': total,
         'sarc_score': sarc_sum,
@@ -114,18 +100,34 @@ def process_onboarding(data):
         'stored': True
     }
 
-# --- Example usage for testing ---
-if __name__ == "__main__":
-    test_data = {
-        'email': 'test@example.com',
-        'username': 'JohnDoe',
-        'age_bucket': '65-69',
-        'red_flags': [],
-        'sarc_f': {'strength': 1, 'walking': 0, 'rise': 1, 'stairs': 0, 'falls': 0},
-        'gender': 'male',
-        'calf_cm': 34.5,
-        'single_leg_seconds': 12,
-        'deep_squat': 'partial'
-    }
-    result = process_onboarding(test_data)
-    print(json.dumps(result, indent=2))
+def generate_summary_text(data):
+    """
+    Generates a clean text summary for download / email.
+    """
+    lines = []
+    lines.append("=" * 50)
+    lines.append("  ELDERLY TRAINING SYSTEM - PERSONAL SUMMARY")
+    lines.append("=" * 50)
+    lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    lines.append("")
+    lines.append(f"Username:  {data.get('username', 'N/A')}")
+    lines.append(f"Email:     {data.get('email', 'N/A')}")
+    lines.append(f"Level:     {data.get('level', 'N/A')}")
+    lines.append(f"Total Score: {data.get('total_score', 'N/A')} (Lower is better)")
+    lines.append("")
+    lines.append("--- Breakdown Scores ---")
+    lines.append(f"SARC-F:      {data.get('sarc_score', 'N/A')}")
+    lines.append(f"Calf:        {data.get('calf_score', 'N/A')}")
+    lines.append(f"Balance:     {data.get('single_score', 'N/A')}")
+    lines.append(f"Squat:       {data.get('squat_score', 'N/A')}")
+    lines.append("")
+    lines.append("--- Assessment Overview ---")
+    lines.append(data.get('overview', 'N/A'))
+    lines.append("")
+    lines.append("--- Expected Outcomes ---")
+    lines.append(data.get('expectation', 'N/A'))
+    lines.append("")
+    lines.append("=" * 50)
+    lines.append("  Keep this summary. Share it with your doctor or trainer.")
+    lines.append("=" * 50)
+    return "\n".join(lines)

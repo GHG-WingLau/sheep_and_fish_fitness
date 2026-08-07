@@ -76,7 +76,7 @@ def process_onboarding(data):
     
     overview = (
         f"Based on your assessment (Total Score: {total}/17), you are recommended for {level}. "
-        f"This means {intensity_text} "
+        f"This means {intensity_text}. "
         f"Your balance (Single-leg: {sec}s) and squat mobility ({data['deep_squat'].replace('_', ' ')}) were key factors."
     )
 
@@ -100,7 +100,7 @@ def process_onboarding(data):
         'stored': True
     }
 
-def generate_summary_text(data):
+def generate_summary_text(result, email, username):
     """
     Generates a clean text summary for download / email.
     """
@@ -110,22 +110,22 @@ def generate_summary_text(data):
     lines.append("=" * 50)
     lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append("")
-    lines.append(f"Username:  {data.get('username', 'N/A')}")
-    lines.append(f"Email:     {data.get('email', 'N/A')}")
-    lines.append(f"Level:     {data.get('level', 'N/A')}")
-    lines.append(f"Total Score: {data.get('total_score', 'N/A')} (Lower is better)")
+    lines.append(f"Username:  {username}")
+    lines.append(f"Email:     {email}")
+    lines.append(f"Level:     {result.get('level', 'N/A')}")
+    lines.append(f"Total Score: {result.get('total_score', 'N/A')} (Lower is better)")
     lines.append("")
     lines.append("--- Breakdown Scores ---")
-    lines.append(f"SARC-F:      {data.get('sarc_score', 'N/A')}")
-    lines.append(f"Calf:        {data.get('calf_score', 'N/A')}")
-    lines.append(f"Balance:     {data.get('single_score', 'N/A')}")
-    lines.append(f"Squat:       {data.get('squat_score', 'N/A')}")
+    lines.append(f"SARC-F:      {result.get('sarc_score', 'N/A')}")
+    lines.append(f"Calf:        {result.get('calf_score', 'N/A')}")
+    lines.append(f"Balance:     {result.get('single_score', 'N/A')}")
+    lines.append(f"Squat:       {result.get('squat_score', 'N/A')}")
     lines.append("")
     lines.append("--- Assessment Overview ---")
-    lines.append(data.get('overview', 'N/A'))
+    lines.append(result.get('overview', 'N/A'))
     lines.append("")
     lines.append("--- Expected Outcomes ---")
-    lines.append(data.get('expectation', 'N/A'))
+    lines.append(result.get('expectation', 'N/A'))
     lines.append("")
     lines.append("=" * 50)
     lines.append("  Keep this summary. Share it with your doctor or trainer.")

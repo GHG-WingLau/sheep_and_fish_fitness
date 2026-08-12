@@ -16,7 +16,7 @@ from onboarding_engine import process_onboarding, generate_summary_text
 from exercise_engine import get_daily_exercises
 from i18n import get_text, LANGUAGES
 
-# ---------- Set up logging ----------
+# ---------- Logging ----------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------- Init DB (graceful) ----------
+# ---------- Init DB ----------
 try:
     init_db()
     logger.info("Database initialized successfully.")
@@ -61,9 +61,8 @@ if "training" not in st.session_state:
         "total_reps": 0
     }
 
-# ---------- Navigation with query params ----------
+# ---------- Navigation ----------
 def navigate_to(page, params=None):
-    """Set query parameters and rerun."""
     if params:
         for k, v in params.items():
             st.query_params[k] = v
@@ -113,8 +112,8 @@ def load_workout():
         st.session_state.training["rpe_scores"] = []
         st.session_state.training["coach_message"] = ""
         st.session_state.training["exercise_started"] = False
-        total = sum(ex.get('reps', 0) for ex in exercises)
-        st.session_state.training["total_reps"] = total
+        st.session_state.training["total_reps"] = sum(ex.get('reps', 0) for ex in exercises)
+        logger.info("Workout loaded.")
 
 def advance_exercise():
     if st.session_state.training["current_index"] < 2:
@@ -342,7 +341,7 @@ def render_onboarding():
                     st.error(f"Update error: {e}. Please try again.")
                     logger.error(f"Update exception: {e}", exc_info=True)
 
-# ---------- Training Page ----------
+# ---------- Training Page (Simplified, No Rest Day) ----------
 def render_training():
     render_language_selector()
     
@@ -351,7 +350,6 @@ def render_training():
         email = st.query_params["email"]
         level = st.query_params.get("level")
         logger.info(f"Restoring user from query params: email={email}, level={level}")
-        # Try to retrieve full user data from DB
         try:
             user_data = retrieve_user(email, "")
             if user_data:
@@ -378,172 +376,157 @@ def render_training():
     user = st.session_state.user
     training = st.session_state.training
 
+    # Load exercises if empty
     if not training["exercises"]:
         load_workout()
         st.rerun()
         return
 
-    # Header
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.subheader(get_text("training.week_day", week=user['week'], day=user['day']))
-    with col2:
-        st.metric(get_text("training.level"), user['level'])
+    try:
+        # Header
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.subheader(get_text("training.week_day", week=user['week'], day=user['day']))
+        with col2:
+            st.metric(get_text("training.level"), user['level'])
 
-    # Timeline dots
-    cols = st.columns(7)
-    for i in range(1, 8):
-        status = "●" if i <= user['day'] else "○"
-        day_name = "R" if i > 5 else str(i)
-        cols[i-1].markdown(f"<center><span style='font-size:20px;'>{status}</span><br><span style='font-size:10px;'>D{day_name}</span></center>", unsafe_allow_html=True)
-    st.divider()
-
-    if training["is_complete"]:
-        st.balloons()
-        st.success(get_text("training.complete_title"))
-        st.subheader(get_text("training.daily_achievement"))
-        avg_rpe = sum(training["rpe_scores"]) / len(training["rpe_scores"]) if training["rpe_scores"] else 0
-        st.metric(get_text("training.avg_exertion"), f"{avg_rpe:.1f}/10", get_text("training.avg_help"))
-        st.caption(get_text("training.sessions_completed", count=len(training['rpe_scores'])))
-        st.info(get_text("training.habit_message"))
-        col_act1, col_act2 = st.columns(2)
-        with col_act1:
-            if st.button(get_text("common.return_to_dashboard")):
-                st.session_state.training = {}
-                navigate_to("onboarding")
-        with col_act2:
-            if st.button("📊 View Progress"):
-                st.info("Progress view coming soon.")
-        return
-
-    # Current exercise
-    ex = training["exercises"][training["current_index"]]
-    ex_id = ex['id']
-    if ex_id.startswith("L0_"):
-        name_key = f"level0_exercises.{ex_id}.name"
-        desc_key = f"level0_exercises.{ex_id}.desc"
-        breath_key = f"level0_exercises.{ex_id}.breath_cue"
-        cue_key = f"level0_exercises.{ex_id}.key_cue"
-    else:
-        name_key = f"exercises.{ex_id}.name"
-        desc_key = f"exercises.{ex_id}.desc"
-        breath_key = f"exercises.{ex_id}.breath_cue"
-        cue_key = f"exercises.{ex_id}.key_cue"
-    
-    ex_name = get_text(name_key, default=ex['name'])
-    ex_desc = get_text(desc_key, default=ex['desc'])
-    ex_breath = get_text(breath_key, default=ex['breath_cue'])
-    ex_cue = get_text(cue_key, default=ex['key_cue'])
-
-    # Placeholder image
-    st.image(f"https://via.placeholder.com/400x200/4CAF50/FFFFFF?text={ex['id']}+{ex['name'].replace(' ','+')}", use_container_width=True)
-    
-    st.subheader(get_text("training.exercise_of", current=training['current_index']+1, name=ex_name))
-    st.caption(get_text("training.target", target=ex['target']))
-    st.caption(get_text("training.reps_holds", reps=ex['reps'], hold=ex['hold']))
-    st.caption(get_text("training.description", desc=ex_desc))
-    st.caption(get_text("training.key_cue", key_cue=ex_cue))
-
-    coach_msg = training["coach_message"]
-    if coach_msg:
-        st.info(get_text("training.coach_start", message=coach_msg))
-    else:
-        st.info(get_text("training.coach_ready"))
-
-    # Controls
-    col_controls1, col_controls2, col_controls3 = st.columns([1, 1, 1])
-    with col_controls1:
-        if not training["exercise_started"]:
-            if st.button(get_text("training.start_button"), use_container_width=True):
-                training["exercise_started"] = True
-                training["is_paused"] = False
-                training["coach_message"] = get_text("coach.lets_begin", exercise=ex_name)
-                st.rerun()
-        elif training["is_paused"]:
-            if st.button(get_text("training.resume_button"), use_container_width=True):
-                training["is_paused"] = False
-                training["coach_message"] = "▶️ Resuming. Let's go!"
-                st.rerun()
-        else:
-            if st.button(get_text("training.pause_button"), use_container_width=True):
-                training["is_paused"] = True
-                training["coach_message"] = "⏸ Paused. Take a breath. Resume when ready."
-                st.rerun()
-    with col_controls2:
-        if training["exercise_started"] and not training["is_paused"]:
-            if training["rep_count"] < ex['reps']:
-                if st.button(get_text("training.rep_button"), use_container_width=True):
-                    training["rep_count"] += 1
-                    remaining = ex['reps'] - training["rep_count"]
-                    if remaining == 0:
-                        training["coach_message"] = "✅ Exercise complete! Rate it below."
-                    else:
-                        training["coach_message"] = get_text("coach.rep_count", current=training['rep_count'], total=ex['reps'])
-                    st.rerun()
-            else:
-                if st.button(get_text("training.done_button"), use_container_width=True):
-                    st.session_state["show_rpe"] = True
-                    st.rerun()
-        else:
-            st.button(get_text("training.locked_button"), disabled=True, use_container_width=True)
-    with col_controls3:
-        if training["rep_count"] >= ex['reps'] and training["exercise_started"]:
-            if len(training["rpe_scores"]) > training["current_index"]:
-                if st.button(get_text("training.next_button"), use_container_width=True):
-                    advance_exercise()
-                    st.rerun()
-            else:
-                st.button("📊 Rate First", disabled=True, use_container_width=True)
-        else:
-            st.button(get_text("training.locked_button"), disabled=True, use_container_width=True)
-
-    # RPE
-    if training["rep_count"] >= ex['reps'] and training["exercise_started"]:
-        if len(training["rpe_scores"]) <= training["current_index"]:
-            st.divider()
-            st.subheader(get_text("training.rate_prompt"))
-            st.caption(get_text("training.rate_help"))
-            rpe_val = st.slider("", 1, 10, 5, key=f"rpe_{training['current_index']}")
-            st.markdown(f"<center>{['😊','🙂','😐','😅','😰'][(rpe_val-1)//2] if rpe_val <= 10 else '😊'}</center>", unsafe_allow_html=True)
-            if st.button(get_text("training.submit_rating")):
-                if len(training["rpe_scores"]) > training["current_index"]:
-                    training["rpe_scores"][training["current_index"]] = rpe_val
-                else:
-                    training["rpe_scores"].append(rpe_val)
-                st.session_state.user["last_rpe"] = rpe_val
-                st.success(get_text("training.rating_saved", rpe=rpe_val))
-                st.rerun()
-
-    st.progress(training["rep_count"] / max(ex['reps'], 1))
-    st.caption(get_text("training.progress_label", current=training['rep_count'], total=ex['reps']))
-
-    # Rest day
-    if user['day'] > 5:
+        # Timeline dots
+        cols = st.columns(7)
+        for i in range(1, 8):
+            status = "●" if i <= user['day'] else "○"
+            day_name = "R" if i > 5 else str(i)
+            cols[i-1].markdown(f"<center><span style='font-size:20px;'>{status}</span><br><span style='font-size:10px;'>D{day_name}</span></center>", unsafe_allow_html=True)
         st.divider()
-        st.subheader(get_text("training.rest_day_title"))
-        rest_choices = [
-            "🚶 Walk outdoors for 30 mins",
-            "📖 Read a chapter of the Bible",
-            "✍️ Write a gratitude journal entry",
-            "🎵 Listen to soft music",
-            "🧘 Focus on 10 minutes of diaphragmatic breathing"
-        ]
-        with st.form("rest_form"):
-            rest_type = st.selectbox(get_text("training.rest_select"), rest_choices)
-            reflection = st.text_area(get_text("training.rest_reflect"))
-            if st.form_submit_button(get_text("training.rest_save")):
-                try:
-                    save_rest_reflection(
-                        user_email=user["email"],
-                        username=user["username"],
-                        week=user["week"],
-                        day=user["day"],
-                        rest_type=rest_type,
-                        reflection=reflection
-                    )
-                    st.success(get_text("training.rest_saved"))
-                except Exception as e:
-                    st.warning(f"Could not save reflection: {e}")
+
+        if training["is_complete"]:
+            st.balloons()
+            st.success(get_text("training.complete_title"))
+            st.subheader(get_text("training.daily_achievement"))
+            avg_rpe = sum(training["rpe_scores"]) / len(training["rpe_scores"]) if training["rpe_scores"] else 0
+            st.metric(get_text("training.avg_exertion"), f"{avg_rpe:.1f}/10", get_text("training.avg_help"))
+            st.caption(get_text("training.sessions_completed", count=len(training['rpe_scores'])))
+            st.info(get_text("training.habit_message"))
+            col_act1, col_act2 = st.columns(2)
+            with col_act1:
+                if st.button(get_text("common.return_to_dashboard")):
+                    st.session_state.training = {}
+                    navigate_to("onboarding")
+            with col_act2:
+                if st.button("📊 View Progress"):
+                    st.info("Progress view coming soon.")
+            return
+
+        # Current exercise
+        ex = training["exercises"][training["current_index"]]
+        ex_id = ex['id']
+        if ex_id.startswith("L0_"):
+            name_key = f"level0_exercises.{ex_id}.name"
+            desc_key = f"level0_exercises.{ex_id}.desc"
+            breath_key = f"level0_exercises.{ex_id}.breath_cue"
+            cue_key = f"level0_exercises.{ex_id}.key_cue"
+        else:
+            name_key = f"exercises.{ex_id}.name"
+            desc_key = f"exercises.{ex_id}.desc"
+            breath_key = f"exercises.{ex_id}.breath_cue"
+            cue_key = f"exercises.{ex_id}.key_cue"
+        
+        ex_name = get_text(name_key, default=ex['name'])
+        ex_desc = get_text(desc_key, default=ex['desc'])
+        ex_breath = get_text(breath_key, default=ex['breath_cue'])
+        ex_cue = get_text(cue_key, default=ex['key_cue'])
+
+        # Placeholder image
+        st.image(
+            f"https://via.placeholder.com/400x200/4CAF50/FFFFFF?text={ex['id']}+{ex['name'].replace(' ','+')}",
+            width='stretch'  # replaces use_container_width
+        )
+        
+        st.subheader(get_text("training.exercise_of", current=training['current_index']+1, name=ex_name))
+        st.caption(get_text("training.target", target=ex['target']))
+        st.caption(get_text("training.reps_holds", reps=ex['reps'], hold=ex['hold']))
+        st.caption(get_text("training.description", desc=ex_desc))
+        st.caption(get_text("training.key_cue", key_cue=ex_cue))
+
+        coach_msg = training["coach_message"]
+        if coach_msg:
+            st.info(get_text("training.coach_start", message=coach_msg))
+        else:
+            st.info(get_text("training.coach_ready"))
+
+        # Controls
+        col_controls1, col_controls2, col_controls3 = st.columns([1, 1, 1])
+        with col_controls1:
+            if not training["exercise_started"]:
+                if st.button(get_text("training.start_button"), width='stretch'):
+                    training["exercise_started"] = True
+                    training["is_paused"] = False
+                    training["coach_message"] = get_text("coach.lets_begin", exercise=ex_name)
+                    st.rerun()
+            elif training["is_paused"]:
+                if st.button(get_text("training.resume_button"), width='stretch'):
+                    training["is_paused"] = False
+                    training["coach_message"] = "▶️ Resuming. Let's go!"
+                    st.rerun()
+            else:
+                if st.button(get_text("training.pause_button"), width='stretch'):
+                    training["is_paused"] = True
+                    training["coach_message"] = "⏸ Paused. Take a breath. Resume when ready."
+                    st.rerun()
+        with col_controls2:
+            if training["exercise_started"] and not training["is_paused"]:
+                if training["rep_count"] < ex['reps']:
+                    if st.button(get_text("training.rep_button"), width='stretch'):
+                        training["rep_count"] += 1
+                        remaining = ex['reps'] - training["rep_count"]
+                        if remaining == 0:
+                            training["coach_message"] = "✅ Exercise complete! Rate it below."
+                        else:
+                            training["coach_message"] = get_text("coach.rep_count", current=training['rep_count'], total=ex['reps'])
+                        st.rerun()
+                else:
+                    if st.button(get_text("training.done_button"), width='stretch'):
+                        st.session_state["show_rpe"] = True
+                        st.rerun()
+            else:
+                st.button(get_text("training.locked_button"), disabled=True, width='stretch')
+        with col_controls3:
+            if training["rep_count"] >= ex['reps'] and training["exercise_started"]:
+                if len(training["rpe_scores"]) > training["current_index"]:
+                    if st.button(get_text("training.next_button"), width='stretch'):
+                        advance_exercise()
+                        st.rerun()
+                else:
+                    st.button("📊 Rate First", disabled=True, width='stretch')
+            else:
+                st.button(get_text("training.locked_button"), disabled=True, width='stretch')
+
+        # RPE Rating
+        if training["rep_count"] >= ex['reps'] and training["exercise_started"]:
+            if len(training["rpe_scores"]) <= training["current_index"]:
+                st.divider()
+                st.subheader(get_text("training.rate_prompt"))
+                st.caption(get_text("training.rate_help"))
+                rpe_val = st.slider("", 1, 10, 5, key=f"rpe_{training['current_index']}")
+                st.markdown(f"<center>{['😊','🙂','😐','😅','😰'][(rpe_val-1)//2] if rpe_val <= 10 else '😊'}</center>", unsafe_allow_html=True)
+                if st.button(get_text("training.submit_rating")):
+                    if len(training["rpe_scores"]) > training["current_index"]:
+                        training["rpe_scores"][training["current_index"]] = rpe_val
+                    else:
+                        training["rpe_scores"].append(rpe_val)
+                    st.session_state.user["last_rpe"] = rpe_val
+                    st.success(get_text("training.rating_saved", rpe=rpe_val))
+                    st.rerun()
+
+        st.progress(training["rep_count"] / max(ex['reps'], 1))
+        st.caption(get_text("training.progress_label", current=training['rep_count'], total=ex['reps']))
+
+        # (Rest day section removed for clarity – will add back later if needed)
+
+    except Exception as e:
+        st.error(f"⚠️ An error occurred while loading your training: {e}")
+        logger.error(f"Training page error: {e}", exc_info=True)
+        if st.button("Return to onboarding"):
+            navigate_to("onboarding")
 
 # ---------- Main Router ----------
 def main():

@@ -1,0 +1,282 @@
+{
+  "common": {
+    "app_title": "🧓 Elderly Online Training System",
+    "language_selector": "🌐 Language",
+    "welcome": "*\"Welcome. Before we design your personal 30-minute exercise program, we need to understand your current body. This 10-minute assessment is not a test—it is a safety check. It helps us find the right starting level so you never push too hard or too fast. Answer honestly. If something feels painful or unsafe, stop immediately. Your safety is our #1 priority.\"*",
+    "email": "📧 Email Address",
+    "username": "👤 Username (your chosen nickname)",
+    "go_back": "🔄 Go Back",
+    "download_summary": "📥 Download Summary",
+    "proceed_to_training": "🏋️ Proceed to Daily Training",
+    "return_to_dashboard": "🏠 Return to Dashboard"
+  },
+  "onboarding": {
+    "title": "Elderly Online Training System",
+    "register": "🆕 Register as New User",
+    "update": "✏️ Update Existing Profile",
+    "retrieve": "📋 Retrieve Daily Program",
+    "note": "📌 Note: For registration, we will save your data. For updates/retrieval, we require **both** your registered email and username to match.",
+    "assessment_section": "📊 Assessment Section",
+    "age_group": "📅 Age Group",
+    "safety_check": "🚨 Safety Check",
+    "sarcf": "💪 SARC-F Questionnaire",
+    "calf_circumference": "📏 Calf Circumference",
+    "gender": "Gender",
+    "single_leg_test": "🦩 Single-Leg Stance Test",
+    "single_leg_help": "Stand beside a chair. Lift one foot. Enter the longest time (seconds) you held it.",
+    "deep_squat": "🏋️ Deep Squat Test (Chair-Assisted)",
+    "deep_squat_options": {
+      "full": "Full Squat",
+      "partial": "Partial Squat",
+      "chair_touch": "Chair Touch Only",
+      "unable": "Unable or Painful"
+    },
+    "process_button": "📊 Process Request",
+    "email_required": "❌ Email and Username are required.",
+    "no_profile": "❌ No profile found. Please check your email and username, or register as a new user.",
+    "welcome_back": "✅ Welcome back, {username}!",
+    "stored_profile": "📋 Your Stored Profile",
+    "recommended_level": "Recommended Level",
+    "total_score": "Total Score",
+    "score_metric": "Lower is better",
+    "last_assessed": "Last assessed: {date}",
+    "medical_deferral": "⚠️ MEDICAL DEFERRAL",
+    "medical_info": "You have reported one or more medical red flags. Please consult your physician before starting any exercise program.",
+    "medical_expectation": "We recommend you share this assessment with your doctor to get personalized clearance.",
+    "registration_success": "Registration successful! Your data has been saved.",
+    "update_success": "Profile updated successfully!",
+    "email_exists": "Email already registered. Please use 'Update Profile' or login with a different email.",
+    "match_error": "No matching user found. Please check your email and username.",
+    "general_error": "Something went wrong."
+  },
+  "training": {
+    "title": "🧓 Daily Training",
+    "week_day": "📅 Week {week} · Day {day}",
+    "level": "Level",
+    "exercise_of": "Exercise {current} of 3: {name}",
+    "target": "🎯 Target: {target}",
+    "reps_holds": "Reps: {reps} | Holds: {hold}s",
+    "description": "📝 {desc}",
+    "key_cue": "🔑 {key_cue}",
+    "coach_ready": "👨‍🏫 Coach: Ready to start? Press 'Start'.",
+    "coach_start": "👨‍🏫 Coach: {message}",
+    "start_button": "▶️ Start",
+    "pause_button": "⏸ Pause",
+    "resume_button": "▶️ Resume",
+    "rep_button": "➕ +1 Rep (Demo)",
+    "done_button": "✅ Done",
+    "next_button": "⏭ Next Exercise",
+    "locked_button": "🔒 Locked",
+    "rate_prompt": "📊 Rate This Exercise",
+    "rate_help": "How hard was this exercise?",
+    "submit_rating": "✅ Submit Rating",
+    "rating_saved": "Rating saved! ({rpe}/10)",
+    "progress_label": "Progress: {current} / {total} reps",
+    "complete_title": "🎉 Congratulations! You've completed today's training!",
+    "daily_achievement": "📊 Daily Achievement",
+    "avg_exertion": "Average Exertion",
+    "avg_help": "Lower is better for consistency",
+    "sessions_completed": "Total sessions completed: {count}/3",
+    "habit_message": "💡 You're building a strong habit. Tomorrow is another step forward!",
+    "rest_day_title": "🌿 Rest Day Activity",
+    "rest_day_options": "Today is a rest day. Choose one:",
+    "rest_choices": [
+      "🚶 Walk outdoors for 30 mins",
+      "📖 Read a chapter of the Bible",
+      "✍️ Write a gratitude journal entry",
+      "🎵 Listen to soft music",
+      "🧘 Focus on 10 minutes of diaphragmatic breathing"
+    ],
+    "rest_select": "Select your activity:",
+    "rest_reflect": "📝 Reflect on your rest today (optional):",
+    "rest_save": "💾 Save Reflection",
+    "rest_saved": "Rest logged! Rest builds strength."
+  },
+  "exercises": {
+    "1": {
+      "name": "Supine Glute Bridge",
+      "desc": "Lie on your back, knees bent, feet flat. Press heels, lift hips.",
+      "breath_cue": "Exhale (lift, 2s). Inhale (lower, 4s).",
+      "key_cue": "Lower like pressing through honey—4 seconds down."
+    },
+    "2": {
+      "name": "Side-Lying Hip Abduction",
+      "desc": "Lie on side, bottom knee bent, top leg lifted to 45°.",
+      "breath_cue": "Exhale (lift, 2s). Inhale (lower, 4s).",
+      "key_cue": "Don't drop—control the lowering."
+    },
+    "3": {
+      "name": "Standing Hip Abduction (Chair)",
+      "desc": "Stand behind chair, hold backrest, lift leg out to side.",
+      "breath_cue": "Exhale (lift, 2s). Inhale (lower, 4s).",
+      "key_cue": "Lower as slowly as you lifted."
+    },
+    "4": {
+      "name": "Seated Calf Raise (Toes Up)",
+      "desc": "Sit upright, feet flat. Lift toes, heels stay down.",
+      "breath_cue": "Exhale (lift toes, 2s). Inhale (lower, 4s).",
+      "key_cue": "The magic is in the lowering."
+    },
+    "5": {
+      "name": "Standing Calf Raise (Chair)",
+      "desc": "Stand holding chair, rise onto balls of feet.",
+      "breath_cue": "Exhale (rise, 2s). Inhale (lower, 4s).",
+      "key_cue": "Count 1-2 up, 1-2-3-4 down."
+    },
+    "6": {
+      "name": "Loaded Calf Stretch",
+      "desc": "Facing wall, one leg back. Front leg bends, back heel lifts (2s) and lowers (4s).",
+      "breath_cue": "Exhale (heel up, 2s). Inhale (heel down, 4s).",
+      "key_cue": "Control the heel lift and lower."
+    },
+    "7": {
+      "name": "Kegel (Pelvic Floor)",
+      "desc": "Sit or lie down. Squeeze pelvic floor muscles, hold, release slowly.",
+      "breath_cue": "Exhale (squeeze, 2s). Hold (10s). Inhale (release, 4s).",
+      "key_cue": "Release slowly—feel the full relaxation."
+    },
+    "8": {
+      "name": "Bridge + Pelvic Integration",
+      "desc": "Lie on back, knees bent. Engage pelvic floor, then lift hips.",
+      "breath_cue": "Exhale (squeeze + lift, 2s). Inhale (lower, 4s).",
+      "key_cue": "Engage pelvic floor BEFORE you lift the hips."
+    },
+    "9": {
+      "name": "Seated Marching",
+      "desc": "Sit tall. March knees alternately.",
+      "breath_cue": "Inhale 2 steps, exhale 2 steps.",
+      "key_cue": "Don't drop—guide the foot down."
+    },
+    "10": {
+      "name": "Seated Resisted Leg Raise",
+      "desc": "Sit tall. Lift one leg while pressing down with hands to resist (2s). Then use hands to push leg down while leg resists (4s).",
+      "breath_cue": "Exhale (lift with resistance, 2s). Inhale (lower with resistance, 4s).",
+      "key_cue": "Push up against your hands. Resist the push down."
+    },
+    "11": {
+      "name": "Single-Leg Stand (Chair)",
+      "desc": "Stand holding chair, lift one foot, hold.",
+      "breath_cue": "Exhale (lift, 2s). Breathe steady during hold. Inhale (lower, 4s).",
+      "key_cue": "Place the foot down like it's made of glass."
+    },
+    "12": {
+      "name": "Tandem Stand (Heel-to-Toe)",
+      "desc": "Stand with one foot directly in front of the other, heel to toe.",
+      "breath_cue": "Exhale (position, 2s). Breathe steady during hold. Inhale (return, 4s).",
+      "key_cue": "Press your big toe and heel into the floor."
+    },
+    "13": {
+      "name": "Static Forward Lunge",
+      "desc": "Step forward, lower back knee toward floor.",
+      "breath_cue": "Exhale (lower, 4s). Inhale (rise, 2s).",
+      "key_cue": "The descent builds the muscle."
+    },
+    "14": {
+      "name": "Static Side Lunge",
+      "desc": "Step wide, shift weight to bent knee.",
+      "breath_cue": "Exhale (lower sideways, 4s). Inhale (return, 2s).",
+      "key_cue": "Control the slide sideways."
+    },
+    "15": {
+      "name": "Modified Downward Dog (Wall)",
+      "desc": "Hands on wall, walk down into a forward bend.",
+      "breath_cue": "Exhale (lower, 4s). Inhale (return, 2s).",
+      "key_cue": "Press palms firmly. Draw shoulders down."
+    },
+    "16": {
+      "name": "Seated Lat Stretch",
+      "desc": "Sit tall, reach overhead, lean to one side.",
+      "breath_cue": "Inhale (reach up). Exhale (lean). Inhale (return, 4s).",
+      "key_cue": "Sitting bones stay planted."
+    },
+    "17": {
+      "name": "Supported Deep Squat Hold",
+      "desc": "Hold counter, lower into deep squat.",
+      "breath_cue": "Exhale (lower, 4s). Breathe in hold. Inhale (rise, 2s).",
+      "key_cue": "Lower like a feather, rise like a spring."
+    },
+    "18": {
+      "name": "Partial Wall Squat",
+      "desc": "Back against wall, slide to 45° knee bend.",
+      "breath_cue": "Exhale (slide down, 4s). Breathe in hold. Inhale (slide up, 2s).",
+      "key_cue": "Wall squats build strength on the way down."
+    },
+    "19": {
+      "name": "Seated Trunk Rotation",
+      "desc": "Sit tall, arms crossed, rotate upper body to one side. Hold for 4s, return.",
+      "breath_cue": "Exhale (rotate, 2s). Hold (4s, normal breath). Inhale (return, 4s).",
+      "key_cue": "Hips glued to chair. Only upper body moves."
+    },
+    "20": {
+      "name": "Supine Spinal Twist",
+      "desc": "Lie flat, arms stretched out (T-shape). Both knees bent, rotate legs to one side. Hold.",
+      "breath_cue": "Exhale (rotate legs, 4s). Hold (10s, normal breath). Inhale (return, 2s).",
+      "key_cue": "Both shoulder blades stay on the floor."
+    }
+  },
+  "level0_exercises": {
+    "L0_1": {
+      "name": "Seated Glute Squeeze",
+      "desc": "Sit tall. Squeeze glutes together, hold, release.",
+      "breath_cue": "Exhale (squeeze, 2s). Hold (5s). Inhale (release, 4s).",
+      "key_cue": "Squeeze like holding a coin between your cheeks."
+    },
+    "L0_2": {
+      "name": "Seated Hip Abduction (Band)",
+      "desc": "Sit tall. Push knees outward against band (or towel).",
+      "breath_cue": "Exhale (push out, 2s). Inhale (return, 4s).",
+      "key_cue": "Push against the band like opening a book."
+    },
+    "L0_3": {
+      "name": "Seated Knee Lift",
+      "desc": "Sit tall, hold chair sides. Lift knee toward chest.",
+      "breath_cue": "Exhale (lift, 2s). Inhale (lower, 4s).",
+      "key_cue": "Lift like stepping over a small log."
+    },
+    "L0_4": {
+      "name": "Seated Heel Raise",
+      "desc": "Sit tall. Lift heels off floor, rise onto balls of feet.",
+      "breath_cue": "Exhale (lift heels, 2s). Inhale (lower, 4s).",
+      "key_cue": "Rise up, lower down like a feather."
+    },
+    "L0_5": {
+      "name": "Seated Single-Leg Lift",
+      "desc": "Sit tall. Extend one leg forward, foot flexed.",
+      "breath_cue": "Exhale (extend, 2s). Inhale (lower, 4s).",
+      "key_cue": "Point toes up, lower with control."
+    },
+    "L0_6": {
+      "name": "Seated Leg Extension",
+      "desc": "Sit tall. Straighten one knee, extend leg forward.",
+      "breath_cue": "Exhale (extend, 2s). Inhale (lower, 4s).",
+      "key_cue": "Straighten strong, lower slow."
+    },
+    "L0_7": {
+      "name": "Seated Squat Reach",
+      "desc": "Sit tall. Lean forward, reach hands toward feet.",
+      "breath_cue": "Exhale (reach forward, 4s). Inhale (return, 2s).",
+      "key_cue": "Reach like picking up something from the floor."
+    },
+    "L0_8": {
+      "name": "Seated Toe Taps",
+      "desc": "Sit tall. Tap toes alternately on the floor.",
+      "breath_cue": "Steady breath with rhythm.",
+      "key_cue": "Tap, tap, tap—keep the rhythm."
+    }
+  },
+  "coach": {
+    "exhale": "Exhale",
+    "inhale": "Inhale",
+    "lift": "lift",
+    "lower": "lower",
+    "hold": "hold",
+    "release": "release",
+    "seconds": "s",
+    "rep_count": "Rep {current} of {total}",
+    "great_control": "Great control! Let's keep going.",
+    "excellent_form": "Excellent form.",
+    "last_one": "Last one! Finish strong.",
+    "lets_begin": "Let's begin {exercise}.",
+    "ready_when_you_are": "Ready when you are."
+  }
+}

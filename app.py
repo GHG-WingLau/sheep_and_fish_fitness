@@ -1,7 +1,7 @@
 import streamlit as st
 import json
+import logging
 from datetime import datetime
-import random
 
 from db import (
     init_db,
@@ -16,6 +16,10 @@ from onboarding_engine import process_onboarding, generate_summary_text
 from exercise_engine import get_daily_exercises
 from i18n import get_text, LANGUAGES
 
+# ---------- Set up logging ----------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # ---------- Page Config ----------
 st.set_page_config(
     page_title="🧓 Elderly Training System",
@@ -23,11 +27,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------- Init DB (graceful failure) ----------
+# ---------- Init DB (graceful) ----------
 try:
     init_db()
+    logger.info("Database initialized successfully.")
 except Exception as e:
     st.warning(f"⚠️ Database initialisation issue: {e}")
+    logger.error(f"DB init error: {e}")
 
 # ---------- Session State ----------
 if "language" not in st.session_state:
@@ -55,9 +61,14 @@ if "training" not in st.session_state:
         "total_reps": 0
     }
 
-# ---------- Navigation via query params ----------
-def navigate_to(page):
+# ---------- Navigation with query params ----------
+def navigate_to(page, params=None):
+    """Set query parameters and rerun."""
+    if params:
+        for k, v in params.items():
+            st.query_params[k] = v
     st.query_params["page"] = page
+    logger.info(f"Navigating to {page} with params: {st.query_params}")
     st.rerun()
 
 def get_current_page():
@@ -126,8 +137,10 @@ def advance_exercise():
                 rpe_scores=rpe_scores,
                 completed=True
             )
+            logger.info("Training session saved.")
         except Exception as e:
             st.warning(f"Could not save session: {e}")
+            logger.error(f"Save session error: {e}")
 
 # ---------- Onboarding Page ----------
 def render_onboarding():
@@ -215,6 +228,7 @@ def render_onboarding():
         submitted = st.form_submit_button(get_text("onboarding.process_button"))
 
     if submitted:
+        logger.info(f"Form submitted. Option: {option}, Email: {email}, Username: {username}")
         if not email or not username:
             st.error(get_text("onboarding.email_required"))
         elif option == "📋 Retrieve Daily Program":
@@ -263,23 +277,27 @@ def render_onboarding():
                             st.session_state.user["level"] = int(user_data['level'].split()[-1])
                             st.session_state.user["week"], st.session_state.user["day"] = get_current_week_day(email, username)
                             st.session_state.user["has_osteoporosis"] = "osteoporosis" in user_data['raw_payload'].get('red_flags_checked', [])
-                            navigate_to("training")
+                            navigate_to("training", {"email": email, "level": user_data['level']})
                 else:
                     st.error(get_text("onboarding.no_profile"))
             except Exception as e:
                 st.error(f"Database error: {e}. Please try again.")
+                logger.error(f"Retrieve error: {e}")
         
         elif option == "🆕 Register as New User":
             if payload is None:
                 st.error(get_text("onboarding.general_error"))
             else:
                 try:
+                    logger.info("Processing registration payload...")
                     result = process_onboarding(payload)
+                    logger.info(f"Onboarding result: {result}")
                     if result.get('level') == 'Level 0':
                         st.warning(get_text("onboarding.medical_deferral"))
                         st.info(result.get('overview', ''))
                     else:
                         success, msg = register_user(email, username, result)
+                        logger.info(f"Register user result: success={success}, msg={msg}")
                         if success:
                             st.success(get_text("onboarding.registration_success"))
                             st.session_state.user["email"] = email
@@ -289,11 +307,13 @@ def render_onboarding():
                             st.session_state.user["day"] = 1
                             st.session_state.user["has_osteoporosis"] = "osteoporosis" in result.get('red_flags_checked', [])
                             st.session_state.user["last_rpe"] = 5
-                            navigate_to("training")
+                            logger.info(f"User data stored in session: {st.session_state.user}")
+                            navigate_to("training", {"email": email, "level": result['level']})
                         else:
                             st.error(f"❌ {msg}")
                 except Exception as e:
                     st.error(f"Registration error: {e}. Please try again.")
+                    logger.error(f"Registration exception: {e}", exc_info=True)
         
         elif option == "✏️ Update Existing Profile":
             if payload is None:
@@ -315,16 +335,41 @@ def render_onboarding():
                             st.session_state.user["day"] = 1
                             st.session_state.user["has_osteoporosis"] = "osteoporosis" in result.get('red_flags_checked', [])
                             st.session_state.user["last_rpe"] = 5
-                            navigate_to("training")
+                            navigate_to("training", {"email": email, "level": result['level']})
                         else:
                             st.error(f"❌ {msg}")
                 except Exception as e:
                     st.error(f"Update error: {e}. Please try again.")
+                    logger.error(f"Update exception: {e}", exc_info=True)
 
 # ---------- Training Page ----------
 def render_training():
     render_language_selector()
     
+    # Attempt to restore user from query params if session lost
+    if not st.session_state.user["email"] and st.query_params.get("email"):
+        email = st.query_params["email"]
+        level = st.query_params.get("level")
+        logger.info(f"Restoring user from query params: email={email}, level={level}")
+        # Try to retrieve full user data from DB
+        try:
+            user_data = retrieve_user(email, "")
+            if user_data:
+                st.session_state.user["email"] = user_data["email"]
+                st.session_state.user["username"] = user_data["username"]
+                st.session_state.user["level"] = int(user_data["level"].split()[-1]) if user_data["level"] else 3
+                st.session_state.user["week"], st.session_state.user["day"] = get_current_week_day(email, user_data["username"])
+                st.session_state.user["has_osteoporosis"] = "osteoporosis" in user_data["raw_payload"].get("red_flags_checked", [])
+                logger.info(f"User restored: {st.session_state.user}")
+            else:
+                st.warning("Could not restore user data. Please register again.")
+                navigate_to("onboarding")
+                return
+        except Exception as e:
+            st.error(f"Error restoring user: {e}")
+            navigate_to("onboarding")
+            return
+
     if not st.session_state.user["email"]:
         st.warning("No user data found. Returning to onboarding.")
         navigate_to("onboarding")
@@ -503,6 +548,7 @@ def render_training():
 # ---------- Main Router ----------
 def main():
     page = get_current_page()
+    logger.info(f"Current page: {page}")
     if page == "training":
         render_training()
     else:

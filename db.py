@@ -1,60 +1,43 @@
 import streamlit as st
 import json
 from datetime import datetime
+import pandas as pd
 
 # ---------- CONNECTION ----------
-def get_connection():
-    """Get the underlying SQLAlchemy engine from st.connection."""
-    conn = st.connection("neon", type="sql")
-    # The actual SQLAlchemy engine is inside _instance
-    return conn._instance
-
 def get_raw_connection():
-    """Get a raw psycopg2 connection for executing raw SQL."""
-    engine = get_connection()
+    """Get a raw psycopg2 connection using st.connection."""
+    conn = st.connection("neon", type="sql")
+    # The SQLAlchemy engine is inside _instance
+    engine = conn._instance
     return engine.raw_connection()
 
 def execute_query(sql, params=None):
     """Execute a query that doesn't return results (INSERT, UPDATE, CREATE)."""
-    raw_conn = get_raw_connection()
-    cursor = raw_conn.cursor()
-    try:
-        if params:
-            cursor.execute(sql, params)
-        else:
-            cursor.execute(sql)
-        raw_conn.commit()
-        return True
-    except Exception as e:
-        raw_conn.rollback()
-        raise e
-    finally:
-        cursor.close()
-        raw_conn.close()
+    with get_raw_connection() as raw_conn:
+        with raw_conn.cursor() as cursor:
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
+            raw_conn.commit()
 
 def fetch_query(sql, params=None):
-    """Execute a query that returns results (SELECT)."""
-    # Use the SQLAlchemy engine directly for fetching
-    engine = get_connection()
-    with engine.connect() as conn:
-        if params:
-            result = conn.execute(sql, params)
-        else:
-            result = conn.execute(sql)
-        # Fetch all rows as list of dicts
-        rows = result.mappings().all()
-        # Convert to pandas DataFrame for compatibility with original code
-        import pandas as pd
-        return pd.DataFrame(rows)
+    """Execute a query that returns results (SELECT), returns pandas DataFrame."""
+    with get_raw_connection() as raw_conn:
+        with raw_conn.cursor() as cursor:
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
+            rows = cursor.fetchall()
+            col_names = [desc[0] for desc in cursor.description]
+            data = [dict(zip(col_names, row)) for row in rows]
+            return pd.DataFrame(data)
 
 # ---------- INITIALIZATION ----------
 def init_db():
     """Create all required tables if they don't exist."""
-    raw_conn = get_raw_connection()
-    cursor = raw_conn.cursor()
-    
-    # Users table
-    cursor.execute("""
+    execute_query("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
@@ -70,8 +53,7 @@ def init_db():
         )
     """)
     
-    # Training progress table
-    cursor.execute("""
+    execute_query("""
         CREATE TABLE IF NOT EXISTS training_progress (
             id SERIAL PRIMARY KEY,
             user_email TEXT NOT NULL,
@@ -85,8 +67,7 @@ def init_db():
         )
     """)
     
-    # Rest reflections table
-    cursor.execute("""
+    execute_query("""
         CREATE TABLE IF NOT EXISTS rest_reflections (
             id SERIAL PRIMARY KEY,
             user_email TEXT NOT NULL,
@@ -98,19 +79,13 @@ def init_db():
             created_at TEXT
         )
     """)
-    
-    raw_conn.commit()
-    cursor.close()
-    raw_conn.close()
 
 # ---------- USER FUNCTIONS ----------
 def user_exists(email):
-    """Check if a user with the given email exists."""
     result = fetch_query("SELECT email FROM users WHERE email = %s", (email,))
     return len(result) > 0
 
 def register_user(email, username, result):
-    """Register a new user with onboarding results."""
     if user_exists(email):
         return False, "Email already registered. Please use 'Update Profile' or login with a different email."
     
@@ -137,8 +112,6 @@ def register_user(email, username, result):
         return False, f"Registration failed: {str(e)}"
 
 def update_user(email, username, result):
-    """Update an existing user's profile."""
-    # Verify both email and username match
     verify = fetch_query("SELECT email, username FROM users WHERE email = %s AND username = %s", (email, username))
     if len(verify) == 0:
         return False, "No matching user found. Please check your email and username."
@@ -174,7 +147,6 @@ def update_user(email, username, result):
         return False, f"Update failed: {str(e)}"
 
 def retrieve_user(email, username):
-    """Retrieve a user's stored profile."""
     result = fetch_query("""
         SELECT email, username, assessment_date, total_score, level, sarc_score, calf_score, single_score, squat_score, raw_payload
         FROM users
@@ -207,7 +179,6 @@ def retrieve_user(email, username):
 
 # ---------- TRAINING PROGRESS FUNCTIONS ----------
 def save_training_session(user_email, username, week, day, exercise_ids, rpe_scores, completed=False):
-    """Save a training session record."""
     sql = """
         INSERT INTO training_progress (user_email, username, week, day, exercise_ids, rpe_scores, session_date, completed)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -225,7 +196,6 @@ def save_training_session(user_email, username, week, day, exercise_ids, rpe_sco
     execute_query(sql, params)
 
 def get_user_progress(user_email, username):
-    """Get all training progress for a user."""
     return fetch_query("""
         SELECT week, day, exercise_ids, rpe_scores, session_date, completed
         FROM training_progress
@@ -234,7 +204,6 @@ def get_user_progress(user_email, username):
     """, (user_email, username))
 
 def get_current_week_day(user_email, username):
-    """Get the current week and day for a user."""
     result = fetch_query("""
         SELECT week, day
         FROM training_progress
@@ -250,7 +219,6 @@ def get_current_week_day(user_email, username):
 
 # ---------- REST REFLECTION FUNCTIONS ----------
 def save_rest_reflection(user_email, username, week, day, rest_type, reflection):
-    """Save a rest day reflection."""
     sql = """
         INSERT INTO rest_reflections (user_email, username, week, day, rest_type, reflection, created_at)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -267,7 +235,6 @@ def save_rest_reflection(user_email, username, week, day, rest_type, reflection)
     execute_query(sql, params)
 
 def get_rest_reflections(user_email, username):
-    """Get all rest reflections for a user."""
     return fetch_query("""
         SELECT week, day, rest_type, reflection, created_at
         FROM rest_reflections

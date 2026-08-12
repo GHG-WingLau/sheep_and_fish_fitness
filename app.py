@@ -34,6 +34,32 @@ st.set_page_config(
     page_icon="🧓",
     layout="centered"
 )
+# Add this at the very top of the page (after page config)
+# ---------- LANGUAGE SELECTOR (PROMINENT HEADER) ----------
+def render_language_selector():
+    """Render a prominent language selector at the top of the page."""
+    col1, col2, col3 = st.columns([4, 2, 1])
+    with col1:
+        st.markdown("🧓 **Elderly Training System**")
+    with col2:
+        current_lang = st.session_state.get("language", "en")
+        lang = st.selectbox(
+            "🌐 Language",
+            options=list(LANGUAGES.keys()),
+            format_func=lambda x: LANGUAGES[x],
+            key="lang_selector_top",
+            label_visibility="collapsed"
+        )
+        if lang != current_lang:
+            st.session_state.language = lang
+            st.rerun()
+    with col3:
+        if st.button("🏠", help="Home"):
+            st.session_state.page = "onboarding"
+            st.rerun()
+    st.divider()
+
+# Call this function at the start of both render_onboarding() and render_training()
 
 # ---------- Initialize Database ----------
 init_db()
@@ -131,6 +157,7 @@ def advance_exercise():
 # ---------- RENDER FUNCTIONS ----------
 
 def render_onboarding():
+    render_language_selector()
     st.title(get_text("common.app_title"))
     st.divider()
 
@@ -378,6 +405,7 @@ def display_results(result, email, username):
 
 # ---------- TRAINING PAGE ----------
 def render_training():
+    render_language_selector()
     st.title(get_text("common.app_title"))
     
     user = st.session_state.user

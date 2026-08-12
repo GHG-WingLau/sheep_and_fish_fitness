@@ -5,7 +5,7 @@ def process_onboarding(data):
     """
     Processes the onboarding data and returns a result dictionary.
     Handles red flags, SARC-F, calf circumference, single-leg stance,
-    chair stand test (30-second), and assigns a Level (0–4).
+    chair stand test (15-second), and assigns a Level (0–4).
     """
     # 1. Check Red Flags (immediate deferral)
     if data.get('red_flags'):
@@ -39,11 +39,11 @@ def process_onboarding(data):
     else:  # 80+
         single_score = 0 if sec >= 8 else (1 if sec >= 4 else 2)
 
-    # 5. Chair Stand Test (30-Second) – Number of stands in 15 seconds
+    # 5. Chair Stand Test (15-second) – Number of stands
     stands = data.get('chair_stands', 0)
     age_num = int(age.split('-')[0])
     
-    # Normative values for 30-second chair stand (scaled to 15 seconds)
+    # Normative values for 15-second chair stand
     if age_num >= 80:
         chair_score = 0 if stands >= 5 else (1 if stands >= 3 else 2)
     elif age_num >= 75:
@@ -88,7 +88,7 @@ def process_onboarding(data):
     overview = (
         f"Based on your assessment (Total Score: {total}/14), you are recommended for {level}. "
         f"This means {intensity_text}. "
-        f"Your balance (Single-leg: {sec}s) and chair stand ability ({stands} stands) were key factors."
+        f"Your balance (Single-leg: {sec}s) and chair stand ability ({stands} stands in 15s) were key factors."
     )
 
     expectation = (

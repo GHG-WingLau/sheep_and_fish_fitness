@@ -3,15 +3,6 @@ import json
 from datetime import datetime
 import random
 
-# Add this at the top of app.py for testing
-import db
-try:
-    db.init_db()
-    st.success("✅ Database connected successfully!")
-except Exception as e:
-    st.error(f"❌ Database connection failed: {e}")
-    st.stop()
-
 # ---------- Import Custom Modules ----------
 from db import (
     init_db,
@@ -26,7 +17,7 @@ from db import (
 )
 from onboarding_engine import process_onboarding, generate_summary_text
 from exercise_engine import get_daily_exercises, EXERCISE_CATALOG, CHAIR_EXERCISE_CATALOG
-from i18n import get_text, LANGUAGES, get_language_selector
+from i18n import get_text, LANGUAGES
 
 # ---------- Page Configuration ----------
 st.set_page_config(
@@ -34,35 +25,14 @@ st.set_page_config(
     page_icon="🧓",
     layout="centered"
 )
-# Add this at the very top of the page (after page config)
-# ---------- LANGUAGE SELECTOR (PROMINENT HEADER) ----------
-def render_language_selector():
-    """Render a prominent language selector at the top of the page."""
-    col1, col2, col3 = st.columns([4, 2, 1])
-    with col1:
-        st.markdown("🧓 **Elderly Training System**")
-    with col2:
-        current_lang = st.session_state.get("language", "en")
-        lang = st.selectbox(
-            "🌐 Language",
-            options=list(LANGUAGES.keys()),
-            format_func=lambda x: LANGUAGES[x],
-            key="lang_selector_top",
-            label_visibility="collapsed"
-        )
-        if lang != current_lang:
-            st.session_state.language = lang
-            st.rerun()
-    with col3:
-        if st.button("🏠", help="Home"):
-            st.session_state.page = "onboarding"
-            st.rerun()
-    st.divider()
-
-# Call this function at the start of both render_onboarding() and render_training()
 
 # ---------- Initialize Database ----------
-init_db()
+try:
+    init_db()
+except Exception as e:
+    st.error(f"⚠️ Database connection error: {str(e)}")
+    st.info("Please check your Neon connection string in secrets.")
+    st.stop()
 
 # ---------- Session State Initialization ----------
 if "language" not in st.session_state:
@@ -92,17 +62,29 @@ if "training" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state.page = "onboarding"
 
-# ---------- Language Selector (Sidebar) ----------
-with st.sidebar:
-    lang = st.selectbox(
-        label=get_text("common.language_selector"),
-        options=list(LANGUAGES.keys()),
-        format_func=lambda x: LANGUAGES[x],
-        key="lang_selector"
-    )
-    if lang != st.session_state.language:
-        st.session_state.language = lang
-        st.rerun()
+# ---------- LANGUAGE SELECTOR (PROMINENT HEADER) ----------
+def render_language_selector():
+    """Render a prominent language selector at the top of the page."""
+    col1, col2, col3 = st.columns([4, 2, 1])
+    with col1:
+        st.markdown("🧓 **Elderly Training System**")
+    with col2:
+        current_lang = st.session_state.get("language", "en")
+        lang = st.selectbox(
+            "🌐 Language",
+            options=list(LANGUAGES.keys()),
+            format_func=lambda x: LANGUAGES[x],
+            key="lang_selector_top",
+            label_visibility="collapsed"
+        )
+        if lang != current_lang:
+            st.session_state.language = lang
+            st.rerun()
+    with col3:
+        if st.button("🏠", help="Home"):
+            st.session_state.page = "onboarding"
+            st.rerun()
+    st.divider()
 
 # ---------- Helper Functions ----------
 def navigate_to_training():
@@ -158,21 +140,18 @@ def advance_exercise():
 
 def render_onboarding():
     render_language_selector()
-    st.title(get_text("common.app_title"))
-    st.divider()
-
-    # Welcome message
+    
     st.markdown(get_text("common.welcome"))
     st.divider()
 
     option = st.radio(
-        label=get_text("onboarding.register"),  # will be overwritten by choices
+        label=get_text("onboarding.choose_action"),
         options=["🆕 Register as New User", "✏️ Update Existing Profile", "📋 Retrieve Daily Program"],
-        format_func=lambda x: get_text({
-            "🆕 Register as New User": "onboarding.register",
-            "✏️ Update Existing Profile": "onboarding.update",
-            "📋 Retrieve Daily Program": "onboarding.retrieve"
-        }.get(x, x))
+        format_func=lambda x: {
+            "🆕 Register as New User": get_text("onboarding.register"),
+            "✏️ Update Existing Profile": get_text("onboarding.update"),
+            "📋 Retrieve Daily Program": get_text("onboarding.retrieve")
+        }.get(x, x)
     )
     st.caption(get_text("onboarding.note"))
 
@@ -186,79 +165,76 @@ def render_onboarding():
             st.divider()
             st.subheader(get_text("onboarding.assessment_section"))
             
+            # Age Group
             age_bucket = st.selectbox(
                 get_text("onboarding.age_group"),
                 ["60-64", "65-69", "70-74", "75-79", "80+"]
             )
             
+            # Safety Check
             st.subheader(get_text("onboarding.safety_check"))
             red_flags = []
-            if st.checkbox("Chest pain or irregular heartbeat at rest"): red_flags.append("chest_pain")
-            if st.checkbox("Hip/knee/spine replacement in the last 6 months"): red_flags.append("replacement")
-            if st.checkbox("Uncontrolled high BP (>160/100) or severe osteoporosis"): red_flags.append("bp_osteo")
-            if st.checkbox("Fallen more than twice in the last month"): red_flags.append("falls")
+            if st.checkbox(get_text("onboarding.safety_flags.chest_pain")): red_flags.append("chest_pain")
+            if st.checkbox(get_text("onboarding.safety_flags.replacement")): red_flags.append("replacement")
+            if st.checkbox(get_text("onboarding.safety_flags.bp_osteo")): red_flags.append("bp_osteo")
+            if st.checkbox(get_text("onboarding.safety_flags.falls")): red_flags.append("falls")
             
+            # SARC-F
             st.subheader(get_text("onboarding.sarcf"))
             col1, col2 = st.columns(2)
             with col1:
                 sarc_strength = st.radio(
-                    "1. Difficulty lifting 5kg?",
+                    get_text("onboarding.sarcf_questions.strength"),
                     [0, 1, 2],
-                    format_func=lambda x: ["None (0)", "Some (1)", "A lot/Unable (2)"][x],
+                    format_func=lambda x: [get_text("onboarding.sarcf_options.none"), get_text("onboarding.sarcf_options.some"), get_text("onboarding.sarcf_options.lot")][x],
                     index=0,
                     key="s1"
                 )
                 sarc_walk = st.radio(
-                    "2. Difficulty walking across a room?",
+                    get_text("onboarding.sarcf_questions.walk"),
                     [0, 1, 2],
-                    format_func=lambda x: ["None (0)", "Some (1)", "A lot/Unable (2)"][x],
+                    format_func=lambda x: [get_text("onboarding.sarcf_options.none"), get_text("onboarding.sarcf_options.some"), get_text("onboarding.sarcf_options.lot")][x],
                     index=0,
                     key="s2"
                 )
                 sarc_rise = st.radio(
-                    "3. Difficulty rising from a chair?",
+                    get_text("onboarding.sarcf_questions.rise"),
                     [0, 1, 2],
-                    format_func=lambda x: ["None (0)", "Some (1)", "A lot/Unable (2)"][x],
+                    format_func=lambda x: [get_text("onboarding.sarcf_options.none"), get_text("onboarding.sarcf_options.some"), get_text("onboarding.sarcf_options.lot")][x],
                     index=0,
                     key="s3"
                 )
             with col2:
                 sarc_stairs = st.radio(
-                    "4. Difficulty climbing 10 stairs?",
+                    get_text("onboarding.sarcf_questions.stairs"),
                     [0, 1, 2],
-                    format_func=lambda x: ["None (0)", "Some (1)", "A lot/Unable (2)"][x],
+                    format_func=lambda x: [get_text("onboarding.sarcf_options.none"), get_text("onboarding.sarcf_options.some"), get_text("onboarding.sarcf_options.lot")][x],
                     index=0,
                     key="s4"
                 )
                 sarc_falls = st.radio(
-                    "5. How many falls in the last year?",
+                    get_text("onboarding.sarcf_questions.falls"),
                     [0, 1, 2],
-                    format_func=lambda x: ["0 (0)", "1-3 (1)", "4+ (2)"][x],
+                    format_func=lambda x: [get_text("onboarding.sarcf_options.none"), get_text("onboarding.sarcf_options.some"), get_text("onboarding.sarcf_options.four")][x],
                     index=0,
                     key="s5"
                 )
             
+            # Calf Circumference
             st.subheader(get_text("onboarding.calf_circumference"))
             gender = st.radio(get_text("onboarding.gender"), ["Male", "Female"])
-            calf_cm = st.number_input("Left calf measurement (cm)", min_value=20.0, max_value=50.0, step=0.5)
+            calf_cm = st.number_input(get_text("onboarding.calf_input"), min_value=20.0, max_value=50.0, step=0.5)
             
+            # Single-Leg Stance
             st.subheader(get_text("onboarding.single_leg_test"))
             st.caption(get_text("onboarding.single_leg_help"))
-            single_sec = st.number_input("Longest hold (seconds)", min_value=0.0, max_value=120.0, step=0.5)
+            single_sec = st.number_input(get_text("onboarding.single_leg_input"), min_value=0.0, max_value=120.0, step=0.5)
             
-            st.subheader(get_text("onboarding.deep_squat"))
-            squat_option = st.selectbox(
-                get_text("onboarding.deep_squat"),
-                ["Full Squat", "Partial Squat", "Chair Touch Only", "Unable or Painful"],
-                format_func=lambda x: get_text(f"onboarding.deep_squat_options.{x.lower().replace(' ', '_')}", default=x)
-            )
-            squat_map = {
-                "Full Squat": "full",
-                "Partial Squat": "partial",
-                "Chair Touch Only": "chair_touch",
-                "Unable or Painful": "unable"
-            }
-            squat_key = squat_map[squat_option]
+            # Chair Stand Test (NEW - Replaces Deep Squat)
+            st.subheader(get_text("onboarding.chair_stand_test"))
+            st.caption(get_text("onboarding.chair_stand_help"))
+            st.info(get_text("onboarding.chair_stand_demo"))
+            chair_stands = st.number_input(get_text("onboarding.chair_stand_input"), min_value=0, max_value=30, step=1, value=0)
             
             payload = {
                 'age_bucket': age_bucket,
@@ -273,7 +249,7 @@ def render_onboarding():
                 'gender': gender.lower(),
                 'calf_cm': calf_cm,
                 'single_leg_seconds': single_sec,
-                'deep_squat': squat_key
+                'chair_stands': chair_stands
             }
         else:
             payload = None
@@ -295,7 +271,7 @@ def render_onboarding():
                 col_a.metric("SARC-F", user_data['sarc_score'])
                 col_b.metric("Calf", user_data['calf_score'])
                 col_c.metric("Balance", user_data['single_score'])
-                col_d.metric("Squat", user_data['squat_score'])
+                col_d.metric("Chair Stands", user_data.get('chair_stands', 'N/A'))
                 st.caption(get_text("onboarding.last_assessed", date=user_data['assessment_date']))
                 
                 st.divider()
@@ -310,7 +286,7 @@ def render_onboarding():
                         'sarc_score': user_data['sarc_score'],
                         'calf_score': user_data['calf_score'],
                         'single_score': user_data['single_score'],
-                        'squat_score': user_data['squat_score'],
+                        'chair_stands': user_data.get('chair_stands', 0),
                         'overview': user_data['raw_payload'].get('overview', 'Retrieved from stored profile.'),
                         'expectation': user_data['raw_payload'].get('expectation', 'Continue your training plan.')
                     }
@@ -397,7 +373,7 @@ def display_results(result, email, username):
         col_a.metric("SARC-F", result.get('sarc_score', 'N/A'))
         col_b.metric("Calf", result.get('calf_score', 'N/A'))
         col_c.metric("Balance", result.get('single_score', 'N/A'))
-        col_d.metric("Squat", result.get('squat_score', 'N/A'))
+        col_d.metric("Chair Stands", result.get('chair_stands', 'N/A'))
         
         st.info(f"📝 {result.get('overview', '')}")
         st.success(f"🎯 {result.get('expectation', '')}")
@@ -406,7 +382,6 @@ def display_results(result, email, username):
 # ---------- TRAINING PAGE ----------
 def render_training():
     render_language_selector()
-    st.title(get_text("common.app_title"))
     
     user = st.session_state.user
     training = st.session_state.training
@@ -472,7 +447,7 @@ def render_training():
     ex_breath = get_text(breath_key, default=ex['breath_cue'])
     ex_cue = get_text(cue_key, default=ex['key_cue'])
 
-    # Display exercise card (placeholder image)
+    # Display exercise card
     st.image(f"https://via.placeholder.com/400x200/4CAF50/FFFFFF?text={ex['id']}+{ex['name'].replace(' ','+')}", use_container_width=True)
     
     st.subheader(get_text("training.exercise_of", current=training['current_index']+1, name=ex_name))
@@ -563,17 +538,9 @@ def render_training():
     if user['day'] > 5:
         st.divider()
         st.subheader(get_text("training.rest_day_title"))
-        st.info(get_text("training.rest_day_options"))
-        rest_choices = [
-            "🚶 Walk outdoors for 30 mins",
-            "📖 Read a chapter of the Bible",
-            "✍️ Write a gratitude journal entry",
-            "🎵 Listen to soft music",
-            "🧘 Focus on 10 minutes of diaphragmatic breathing"
-        ]
-        rest_options = [get_text(ch, default=ch) for ch in rest_choices]
+        st.info("\n".join([f"- {choice}" for choice in get_text("training.rest_choices")]))
         with st.form("rest_form"):
-            rest_type = st.selectbox(get_text("training.rest_select"), rest_options)
+            rest_type = st.selectbox(get_text("training.rest_select"), get_text("training.rest_choices"))
             reflection = st.text_area(get_text("training.rest_reflect"))
             if st.form_submit_button(get_text("training.rest_save")):
                 save_rest_reflection(

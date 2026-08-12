@@ -2,14 +2,35 @@ import streamlit as st
 import json
 from datetime import datetime
 import pandas as pd
+import psycopg2
+from psycopg2 import InterfaceError, OperationalError
 
 # ---------- CONNECTION ----------
 def get_raw_connection():
-    """Get a raw psycopg2 connection using st.connection."""
-    conn = st.connection("neon", type="sql")
-    # The SQLAlchemy engine is inside _instance
-    engine = conn._instance
-    return engine.raw_connection()
+    """
+    Get a raw psycopg2 connection. If the connection is closed, dispose the engine
+    and retry once.
+    """
+    try:
+        conn = st.connection("neon", type="sql")
+        engine = conn._instance
+        raw_conn = engine.raw_connection()
+        # Test the connection
+        with raw_conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        return raw_conn
+    except (InterfaceError, OperationalError) as e:
+        # Connection closed or stale – dispose the engine and retry
+        st.warning("Database connection was idle. Reconnecting...")
+        conn = st.connection("neon", type="sql")
+        engine = conn._instance
+        engine.dispose()  # Clear the connection pool
+        # Now try again
+        raw_conn = engine.raw_connection()
+        # Test again
+        with raw_conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        return raw_conn
 
 def execute_query(sql, params=None):
     """Execute a query that doesn't return results (INSERT, UPDATE, CREATE)."""

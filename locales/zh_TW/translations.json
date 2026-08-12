@@ -49,8 +49,7 @@
     "chair_stand_test": "🪑 坐站測試 (30秒)",
     "chair_stand_help": "坐在椅子上，雙手交叉放在胸前，搭在肩膀上。在15秒內，盡量站起來再坐下，重複進行。",
     "chair_stand_demo": "💡 計算您在15秒內可以完全站起來幾次。使用手機的計時器。",
-    "chair_stand_input": "15秒內站起來的次數"
-    },
+    "chair_stand_input": "15秒內站起來的次數",
     "process_button": "📊 提交評估",
     "email_required": "❌ 請輸入電子郵件與用戶名稱。",
     "no_profile": "❌ 找不到您的資料。請檢查電子郵件與用戶名稱，或註冊為新用戶。",

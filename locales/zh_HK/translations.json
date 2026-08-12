@@ -49,8 +49,7 @@
     "chair_stand_test": "🪑 坐站測試 (30秒)",
     "chair_stand_help": "坐喺櫈上面，雙手交叉放喺心口，搭住膊頭。喺15秒內，盡量企起身再坐低，重複做。",
     "chair_stand_demo": "💡 數吓你喺15秒內可以完全企起身幾多次。用手機嘅計時器。",
-    "chair_stand_input": "15秒內企起身嘅次數"
-    },
+    "chair_stand_input": "15秒內企起身嘅次數",
     "process_button": "📊 提交評估",
     "email_required": "❌ 需要輸入電郵同用戶名稱。",
     "no_profile": "❌ 搵唔到你嘅資料。請檢查電郵同用戶名稱，或者登記做新用戶。",

@@ -5,7 +5,7 @@ def process_onboarding(data):
     """
     Processes the onboarding data and returns a result dictionary.
     Handles red flags, SARC-F, calf circumference, single-leg stance,
-    deep squat test, and assigns a Level (0–4) with appropriate modifications.
+    chair stand test (30-second), and assigns a Level (0–4).
     """
     # 1. Check Red Flags (immediate deferral)
     if data.get('red_flags'):
@@ -39,17 +39,26 @@ def process_onboarding(data):
     else:  # 80+
         single_score = 0 if sec >= 8 else (1 if sec >= 4 else 2)
 
-    # 5. Deep Squat Score (0–3)
-    squat_map = {'full': 0, 'partial': 1, 'chair_touch': 2, 'unable': 3}
-    squat_score = squat_map.get(data.get('deep_squat', 'unable'), 3)
+    # 5. Chair Stand Test (30-Second) – Number of stands in 15 seconds
+    # Normative values adapted from the 30-second chair stand test
+    stands = data.get('chair_stands', 0)
+    age_num = int(age.split('-')[0])
+    
+    # Normative values for 30-second chair stand (scaled to 15 seconds)
+    # For 15 seconds, typical values are about half of 30-second norms
+    if age_num >= 80:
+        chair_score = 0 if stands >= 5 else (1 if stands >= 3 else 2)
+    elif age_num >= 75:
+        chair_score = 0 if stands >= 6 else (1 if stands >= 4 else 2)
+    elif age_num >= 70:
+        chair_score = 0 if stands >= 7 else (1 if stands >= 5 else 2)
+    else:  # 60-69
+        chair_score = 0 if stands >= 8 else (1 if stands >= 5 else 2)
 
-    # 6. Total Score (0–17)
-    total = sarc_sum + calf_score + single_score + squat_score
+    # 6. Total Score (0–14)
+    total = sarc_sum + calf_score + single_score + chair_score
 
     # 7. Determine Level (0 = Chair-assisted, 1–4 = Standard)
-    age_num = int(age.split('-')[0])
-
-    # Level 0 overrides (frailty or age)
     if age_num >= 80:
         level = 'Level 0'
     elif total >= 8:
@@ -67,7 +76,7 @@ def process_onboarding(data):
     else:  # 0–2
         level = 'Level 4'
 
-    # 8. Generate Overview & Expectation (with Level descriptions)
+    # 8. Generate Overview & Expectation
     level_desc = {
         'Level 0': 'chair-assisted exercises only. All movements performed seated. Max 15 mins/day.',
         'Level 1': 'very low intensity. Seated marching, pumps, Kegels, and lying stretches. Max 15 mins/day.',
@@ -79,9 +88,9 @@ def process_onboarding(data):
     intensity_text = level_desc.get(level, "requires medical clearance.")
 
     overview = (
-        f"Based on your assessment (Total Score: {total}/17), you are recommended for {level}. "
+        f"Based on your assessment (Total Score: {total}/14), you are recommended for {level}. "
         f"This means {intensity_text}. "
-        f"Your balance (Single-leg: {sec}s) and squat mobility ({data.get('deep_squat', 'N/A')}) were key factors."
+        f"Your balance (Single-leg: {sec}s) and chair stand ability ({stands} stands) were key factors."
     )
 
     expectation = (
@@ -97,7 +106,8 @@ def process_onboarding(data):
         'sarc_score': sarc_sum,
         'calf_score': calf_score,
         'single_score': single_score,
-        'squat_score': squat_score,
+        'chair_score': chair_score,
+        'chair_stands': stands,
         'red_flags_checked': data.get('red_flags', []),
         'overview': overview,
         'expectation': expectation,
@@ -120,10 +130,10 @@ def generate_summary_text(result, email, username):
     lines.append(f"Total Score: {result.get('total_score', 'N/A')} (Lower is better)")
     lines.append("")
     lines.append("--- Breakdown Scores ---")
-    lines.append(f"SARC-F:      {result.get('sarc_score', 'N/A')}")
-    lines.append(f"Calf:        {result.get('calf_score', 'N/A')}")
-    lines.append(f"Balance:     {result.get('single_score', 'N/A')}")
-    lines.append(f"Squat:       {result.get('squat_score', 'N/A')}")
+    lines.append(f"SARC-F:         {result.get('sarc_score', 'N/A')}")
+    lines.append(f"Calf:           {result.get('calf_score', 'N/A')}")
+    lines.append(f"Balance:        {result.get('single_score', 'N/A')}")
+    lines.append(f"Chair Stands:   {result.get('chair_stands', 'N/A')} stands")
     lines.append("")
     lines.append("--- Assessment Overview ---")
     lines.append(result.get('overview', 'N/A'))

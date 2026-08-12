@@ -3,15 +3,12 @@ import json
 from datetime import datetime
 import random
 
-# ---------- Import Custom Modules ----------
 from db import (
     init_db,
     register_user,
     update_user,
     retrieve_user,
-    user_exists,
     save_training_session,
-    get_user_progress,
     get_current_week_day,
     save_rest_reflection
 )
@@ -19,21 +16,20 @@ from onboarding_engine import process_onboarding, generate_summary_text
 from exercise_engine import get_daily_exercises
 from i18n import get_text, LANGUAGES
 
-# ---------- Page Configuration ----------
+# ---------- Page Config ----------
 st.set_page_config(
     page_title="🧓 Elderly Training System",
     page_icon="🧓",
     layout="centered"
 )
 
-# ---------- Initialize Database ----------
+# ---------- Init DB (graceful failure) ----------
 try:
     init_db()
 except Exception as e:
-    # Don't crash on DB init error - show message and continue
-    st.warning(f"⚠️ Database connection initializing: {str(e)}")
+    st.warning(f"⚠️ Database initialisation issue: {e}")
 
-# ---------- Session State Initialization ----------
+# ---------- Session State ----------
 if "language" not in st.session_state:
     st.session_state.language = "en"
 if "user" not in st.session_state:
@@ -59,14 +55,12 @@ if "training" not in st.session_state:
         "total_reps": 0
     }
 
-# ---------- Page Routing using Query Params ----------
+# ---------- Navigation via query params ----------
 def navigate_to(page):
-    """Navigate to a page using query parameters."""
     st.query_params["page"] = page
     st.rerun()
 
 def get_current_page():
-    """Get the current page from query params, default to onboarding."""
     return st.query_params.get("page", "onboarding")
 
 # ---------- Language Selector ----------
@@ -91,7 +85,7 @@ def render_language_selector():
             navigate_to("onboarding")
     st.divider()
 
-# ---------- Helper Functions ----------
+# ---------- Training Helpers ----------
 def load_workout():
     if not st.session_state.training["exercises"]:
         exercises = get_daily_exercises(
@@ -135,7 +129,7 @@ def advance_exercise():
         except Exception as e:
             st.warning(f"Could not save session: {e}")
 
-# ---------- RENDER ONBOARDING ----------
+# ---------- Onboarding Page ----------
 def render_onboarding():
     render_language_selector()
     st.markdown(get_text("common.welcome"))
@@ -273,7 +267,7 @@ def render_onboarding():
                 else:
                     st.error(get_text("onboarding.no_profile"))
             except Exception as e:
-                st.error(f"Database error: {str(e)}. Please try again.")
+                st.error(f"Database error: {e}. Please try again.")
         
         elif option == "🆕 Register as New User":
             if payload is None:
@@ -288,7 +282,6 @@ def render_onboarding():
                         success, msg = register_user(email, username, result)
                         if success:
                             st.success(get_text("onboarding.registration_success"))
-                            # Store user data in session
                             st.session_state.user["email"] = email
                             st.session_state.user["username"] = username
                             st.session_state.user["level"] = int(result['level'].split()[-1])
@@ -296,12 +289,11 @@ def render_onboarding():
                             st.session_state.user["day"] = 1
                             st.session_state.user["has_osteoporosis"] = "osteoporosis" in result.get('red_flags_checked', [])
                             st.session_state.user["last_rpe"] = 5
-                            # Navigate to training
                             navigate_to("training")
                         else:
                             st.error(f"❌ {msg}")
                 except Exception as e:
-                    st.error(f"Registration error: {str(e)}. Please try again.")
+                    st.error(f"Registration error: {e}. Please try again.")
         
         elif option == "✏️ Update Existing Profile":
             if payload is None:
@@ -327,13 +319,12 @@ def render_onboarding():
                         else:
                             st.error(f"❌ {msg}")
                 except Exception as e:
-                    st.error(f"Update error: {str(e)}. Please try again.")
+                    st.error(f"Update error: {e}. Please try again.")
 
-# ---------- RENDER TRAINING ----------
+# ---------- Training Page ----------
 def render_training():
     render_language_selector()
     
-    # Ensure user data is loaded
     if not st.session_state.user["email"]:
         st.warning("No user data found. Returning to onboarding.")
         navigate_to("onboarding")
@@ -360,10 +351,8 @@ def render_training():
         status = "●" if i <= user['day'] else "○"
         day_name = "R" if i > 5 else str(i)
         cols[i-1].markdown(f"<center><span style='font-size:20px;'>{status}</span><br><span style='font-size:10px;'>D{day_name}</span></center>", unsafe_allow_html=True)
-
     st.divider()
 
-    # Check if session complete
     if training["is_complete"]:
         st.balloons()
         st.success(get_text("training.complete_title"))
@@ -372,7 +361,6 @@ def render_training():
         st.metric(get_text("training.avg_exertion"), f"{avg_rpe:.1f}/10", get_text("training.avg_help"))
         st.caption(get_text("training.sessions_completed", count=len(training['rpe_scores'])))
         st.info(get_text("training.habit_message"))
-        
         col_act1, col_act2 = st.columns(2)
         with col_act1:
             if st.button(get_text("common.return_to_dashboard")):
@@ -383,10 +371,8 @@ def render_training():
                 st.info("Progress view coming soon.")
         return
 
-    # Current Exercise
+    # Current exercise
     ex = training["exercises"][training["current_index"]]
-    
-    # Get translated exercise fields
     ex_id = ex['id']
     if ex_id.startswith("L0_"):
         name_key = f"level0_exercises.{ex_id}.name"
@@ -404,7 +390,7 @@ def render_training():
     ex_breath = get_text(breath_key, default=ex['breath_cue'])
     ex_cue = get_text(cue_key, default=ex['key_cue'])
 
-    # Display exercise card
+    # Placeholder image
     st.image(f"https://via.placeholder.com/400x200/4CAF50/FFFFFF?text={ex['id']}+{ex['name'].replace(' ','+')}", use_container_width=True)
     
     st.subheader(get_text("training.exercise_of", current=training['current_index']+1, name=ex_name))
@@ -413,7 +399,6 @@ def render_training():
     st.caption(get_text("training.description", desc=ex_desc))
     st.caption(get_text("training.key_cue", key_cue=ex_cue))
 
-    # Coach message
     coach_msg = training["coach_message"]
     if coach_msg:
         st.info(get_text("training.coach_start", message=coach_msg))
@@ -422,7 +407,6 @@ def render_training():
 
     # Controls
     col_controls1, col_controls2, col_controls3 = st.columns([1, 1, 1])
-    
     with col_controls1:
         if not training["exercise_started"]:
             if st.button(get_text("training.start_button"), use_container_width=True):
@@ -440,7 +424,6 @@ def render_training():
                 training["is_paused"] = True
                 training["coach_message"] = "⏸ Paused. Take a breath. Resume when ready."
                 st.rerun()
-    
     with col_controls2:
         if training["exercise_started"] and not training["is_paused"]:
             if training["rep_count"] < ex['reps']:
@@ -458,7 +441,6 @@ def render_training():
                     st.rerun()
         else:
             st.button(get_text("training.locked_button"), disabled=True, use_container_width=True)
-    
     with col_controls3:
         if training["rep_count"] >= ex['reps'] and training["exercise_started"]:
             if len(training["rpe_scores"]) > training["current_index"]:
@@ -470,7 +452,7 @@ def render_training():
         else:
             st.button(get_text("training.locked_button"), disabled=True, use_container_width=True)
 
-    # RPE Rating
+    # RPE
     if training["rep_count"] >= ex['reps'] and training["exercise_started"]:
         if len(training["rpe_scores"]) <= training["current_index"]:
             st.divider()
@@ -487,7 +469,6 @@ def render_training():
                 st.success(get_text("training.rating_saved", rpe=rpe_val))
                 st.rerun()
 
-    # Progress
     st.progress(training["rep_count"] / max(ex['reps'], 1))
     st.caption(get_text("training.progress_label", current=training['rep_count'], total=ex['reps']))
 
@@ -519,11 +500,9 @@ def render_training():
                 except Exception as e:
                     st.warning(f"Could not save reflection: {e}")
 
-# ---------- MAIN ROUTER ----------
+# ---------- Main Router ----------
 def main():
-    # Get current page from query params
     page = get_current_page()
-    
     if page == "training":
         render_training()
     else:

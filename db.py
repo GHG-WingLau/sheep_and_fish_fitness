@@ -16,14 +16,12 @@ def get_raw_connection():
         try:
             conn = st.connection("neon", type="sql")
             engine = conn._instance
-            # Check if engine has a valid pool
             raw_conn = engine.raw_connection()
             # Test the connection
             with raw_conn.cursor() as cur:
                 cur.execute("SELECT 1")
             return raw_conn
         except (InterfaceError, OperationalError, AttributeError) as e:
-            # Connection closed or stale – dispose the engine and retry
             if attempt < max_retries - 1:
                 st.warning(f"Database connection reconnecting... (attempt {attempt + 2}/{max_retries})")
                 try:

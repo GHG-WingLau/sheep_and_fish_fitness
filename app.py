@@ -16,7 +16,7 @@ from db import (
     save_rest_reflection
 )
 from onboarding_engine import process_onboarding, generate_summary_text
-from exercise_engine import get_daily_exercises, EXERCISE_CATALOG, CHAIR_EXERCISE_CATALOG
+from exercise_engine import get_daily_exercises
 from i18n import get_text, LANGUAGES
 
 # ---------- Page Configuration ----------
@@ -61,6 +61,8 @@ if "training" not in st.session_state:
     }
 if "page" not in st.session_state:
     st.session_state.page = "onboarding"
+if "just_registered" not in st.session_state:
+    st.session_state.just_registered = False
 
 # ---------- LANGUAGE SELECTOR (PROMINENT HEADER) ----------
 def render_language_selector():
@@ -140,6 +142,12 @@ def advance_exercise():
 
 def render_onboarding():
     render_language_selector()
+    
+    # If the user just registered and we haven't cleared the flag, redirect to training
+    if st.session_state.get("just_registered", False):
+        st.session_state.just_registered = False
+        navigate_to_training()
+        return
     
     st.markdown(get_text("common.welcome"))
     st.divider()
@@ -230,11 +238,17 @@ def render_onboarding():
             st.caption(get_text("onboarding.single_leg_help"))
             single_sec = st.number_input(get_text("onboarding.single_leg_input"), min_value=0.0, max_value=120.0, step=0.5)
             
-            # Chair Stand Test (NEW - Replaces Deep Squat)
+            # Chair Stand Test
             st.subheader(get_text("onboarding.chair_stand_test"))
             st.caption(get_text("onboarding.chair_stand_help"))
             st.info(get_text("onboarding.chair_stand_demo"))
-            chair_stands = st.number_input(get_text("onboarding.chair_stand_input"), min_value=0, max_value=30, step=1, value=0)
+            chair_stands = st.number_input(
+                get_text("onboarding.chair_stand_input"),
+                min_value=0,
+                max_value=30,
+                step=1,
+                value=0
+            )
             
             payload = {
                 'age_bucket': age_bucket,
@@ -320,6 +334,7 @@ def render_onboarding():
                     success, msg = register_user(email, username, result)
                     if success:
                         st.success(get_text("onboarding.registration_success"))
+                        # Store user in session
                         st.session_state.user["email"] = email
                         st.session_state.user["username"] = username
                         st.session_state.user["level"] = int(result['level'].split()[-1])
@@ -327,9 +342,9 @@ def render_onboarding():
                         st.session_state.user["day"] = 1
                         st.session_state.user["has_osteoporosis"] = "osteoporosis" in result.get('red_flags_checked', [])
                         st.session_state.user["last_rpe"] = 5
-                        display_results(result, email, username)
-                        if st.button(get_text("common.proceed_to_training")):
-                            navigate_to_training()
+                        # Set flag to redirect to training on next rerun
+                        st.session_state.just_registered = True
+                        st.rerun()
                     else:
                         st.error(f"❌ {msg}")
         
@@ -345,6 +360,7 @@ def render_onboarding():
                     success, msg = update_user(email, username, result)
                     if success:
                         st.success(get_text("onboarding.update_success"))
+                        # Update session
                         st.session_state.user["email"] = email
                         st.session_state.user["username"] = username
                         st.session_state.user["level"] = int(result['level'].split()[-1])
@@ -352,43 +368,30 @@ def render_onboarding():
                         st.session_state.user["day"] = 1
                         st.session_state.user["has_osteoporosis"] = "osteoporosis" in result.get('red_flags_checked', [])
                         st.session_state.user["last_rpe"] = 5
-                        display_results(result, email, username)
-                        if st.button(get_text("common.proceed_to_training")):
-                            navigate_to_training()
+                        st.session_state.just_registered = True
+                        st.rerun()
                     else:
                         st.error(f"❌ {msg}")
-
-def display_results(result, email, username):
-    st.divider()
-    st.subheader(get_text("onboarding.stored_profile"))
-    
-    if result.get('level') == 'Level 0':
-        st.error(get_text("onboarding.medical_deferral"))
-        st.warning(result.get('overview', ''))
-    else:
-        st.success(f"✅ {get_text('onboarding.recommended_level')}: **{result.get('level', 'N/A')}**")
-        st.metric(get_text("onboarding.total_score"), result.get('total_score', 'N/A'), get_text("onboarding.score_metric"))
-        
-        col_a, col_b, col_c, col_d = st.columns(4)
-        col_a.metric("SARC-F", result.get('sarc_score', 'N/A'))
-        col_b.metric("Calf", result.get('calf_score', 'N/A'))
-        col_c.metric("Balance", result.get('single_score', 'N/A'))
-        col_d.metric("Chair Stands", result.get('chair_stands', 'N/A'))
-        
-        st.info(f"📝 {result.get('overview', '')}")
-        st.success(f"🎯 {result.get('expectation', '')}")
-        st.caption(f"Data stored for: {email} | Username: {username}")
 
 # ---------- TRAINING PAGE ----------
 def render_training():
     render_language_selector()
     
+    # Ensure user data is loaded
+    if not st.session_state.user["email"]:
+        st.warning("No user data found. Returning to onboarding.")
+        st.session_state.page = "onboarding"
+        st.rerun()
+        return
+
     user = st.session_state.user
     training = st.session_state.training
 
+    # Load exercises if not already loaded
     if not training["exercises"]:
         load_workout()
         st.rerun()
+        return
 
     # Header
     col1, col2 = st.columns([3, 1])
@@ -447,7 +450,7 @@ def render_training():
     ex_breath = get_text(breath_key, default=ex['breath_cue'])
     ex_cue = get_text(cue_key, default=ex['key_cue'])
 
-    # Display exercise card
+    # Display exercise card with placeholder image
     st.image(f"https://via.placeholder.com/400x200/4CAF50/FFFFFF?text={ex['id']}+{ex['name'].replace(' ','+')}", use_container_width=True)
     
     st.subheader(get_text("training.exercise_of", current=training['current_index']+1, name=ex_name))
@@ -538,9 +541,17 @@ def render_training():
     if user['day'] > 5:
         st.divider()
         st.subheader(get_text("training.rest_day_title"))
-        st.info("\n".join([f"- {choice}" for choice in get_text("training.rest_choices")]))
+        rest_choices = [
+            "🚶 Walk outdoors for 30 mins",
+            "📖 Read a chapter of the Bible",
+            "✍️ Write a gratitude journal entry",
+            "🎵 Listen to soft music",
+            "🧘 Focus on 10 minutes of diaphragmatic breathing"
+        ]
+        # Translate each choice if needed
+        rest_options = [get_text(f"training.rest_choices.{i}", default=choice) for i, choice in enumerate(rest_choices)]
         with st.form("rest_form"):
-            rest_type = st.selectbox(get_text("training.rest_select"), get_text("training.rest_choices"))
+            rest_type = st.selectbox(get_text("training.rest_select"), rest_options)
             reflection = st.text_area(get_text("training.rest_reflect"))
             if st.form_submit_button(get_text("training.rest_save")):
                 save_rest_reflection(

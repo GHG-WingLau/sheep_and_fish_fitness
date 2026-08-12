@@ -1,21 +1,56 @@
 import streamlit as st
 import json
 from datetime import datetime
-import pandas as pd
 
 # ---------- CONNECTION ----------
 def get_connection():
-    """Get Neon PostgreSQL connection using st.connection."""
-    # st.connection returns a SQLConnection object
-    return st.connection("neon", type="sql")
+    """Get the underlying SQLAlchemy engine from st.connection."""
+    conn = st.connection("neon", type="sql")
+    # The actual SQLAlchemy engine is inside _instance
+    return conn._instance
+
+def get_raw_connection():
+    """Get a raw psycopg2 connection for executing raw SQL."""
+    engine = get_connection()
+    return engine.raw_connection()
+
+def execute_query(sql, params=None):
+    """Execute a query that doesn't return results (INSERT, UPDATE, CREATE)."""
+    raw_conn = get_raw_connection()
+    cursor = raw_conn.cursor()
+    try:
+        if params:
+            cursor.execute(sql, params)
+        else:
+            cursor.execute(sql)
+        raw_conn.commit()
+        return True
+    except Exception as e:
+        raw_conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        raw_conn.close()
+
+def fetch_query(sql, params=None):
+    """Execute a query that returns results (SELECT)."""
+    # Use the SQLAlchemy engine directly for fetching
+    engine = get_connection()
+    with engine.connect() as conn:
+        if params:
+            result = conn.execute(sql, params)
+        else:
+            result = conn.execute(sql)
+        # Fetch all rows as list of dicts
+        rows = result.mappings().all()
+        # Convert to pandas DataFrame for compatibility with original code
+        import pandas as pd
+        return pd.DataFrame(rows)
 
 # ---------- INITIALIZATION ----------
 def init_db():
     """Create all required tables if they don't exist."""
-    conn = get_connection()
-    
-    # Use raw_connection() to get the psycopg2 connection for raw SQL
-    raw_conn = conn.raw_connection()
+    raw_conn = get_raw_connection()
     cursor = raw_conn.cursor()
     
     # Users table
@@ -67,38 +102,6 @@ def init_db():
     raw_conn.commit()
     cursor.close()
     raw_conn.close()
-    
-    # No need to print success on every run (it clutters logs)
-    # st.success("✅ Database initialized successfully!")
-
-# ---------- HELPER: Execute Query ----------
-def execute_query(sql, params=None):
-    """Execute a query that doesn't return results (INSERT, UPDATE, CREATE)."""
-    conn = get_connection()
-    raw_conn = conn.raw_connection()
-    cursor = raw_conn.cursor()
-    try:
-        if params:
-            cursor.execute(sql, params)
-        else:
-            cursor.execute(sql)
-        raw_conn.commit()
-        return True
-    except Exception as e:
-        raw_conn.rollback()
-        raise e
-    finally:
-        cursor.close()
-        raw_conn.close()
-
-def fetch_query(sql, params=None):
-    """Execute a query that returns results (SELECT)."""
-    conn = get_connection()
-    if params:
-        # Use conn.query() which returns a pandas DataFrame
-        return conn.query(sql, params=params)
-    else:
-        return conn.query(sql)
 
 # ---------- USER FUNCTIONS ----------
 def user_exists(email):

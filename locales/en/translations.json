@@ -12,6 +12,7 @@
   },
   "onboarding": {
     "title": "Elderly Online Training System",
+    "choose_action": "Please choose an action:",
     "register": "🆕 Register as New User",
     "update": "✏️ Update Existing Profile",
     "retrieve": "📋 Retrieve Daily Program",
@@ -19,38 +20,36 @@
     "assessment_section": "📊 Assessment Section",
     "age_group": "📅 Age Group",
     "safety_check": "🚨 Safety Check",
-    "sarcf": "💪 SARC-F Questionnaire",
-    "calf_circumference": "📏 Calf Circumference",
-    "gender": "Gender",
-    "single_leg_test": "🦩 Single-Leg Stance Test",
-    "single_leg_help": "Stand beside a chair. Lift one foot. Enter the longest time (seconds) you held it.",
-    "choose_action": "Please choose an action:",
     "safety_flags": {
-        "chest_pain": "Chest pain or irregular heartbeat at rest",
-        "replacement": "Hip/knee/spine replacement in the last 6 months",
-        "bp_osteo": "Uncontrolled high BP (>160/100) or severe osteoporosis",
-        "falls": "Fallen more than twice in the last month"
+      "chest_pain": "Chest pain or irregular heartbeat at rest",
+      "replacement": "Hip/knee/spine replacement in the last 6 months",
+      "bp_osteo": "Uncontrolled high BP (>160/100) or severe osteoporosis",
+      "falls": "Fallen more than twice in the last month"
     },
+    "sarcf": "💪 SARC-F Questionnaire",
     "sarcf_questions": {
-        "strength": "1. Difficulty lifting 5kg?",
-        "walk": "2. Difficulty walking across a room?",
-        "rise": "3. Difficulty rising from a chair?",
-        "stairs": "4. Difficulty climbing 10 stairs?",
-        "falls": "5. How many falls in the last year?"
+      "strength": "1. Difficulty lifting 5kg?",
+      "walk": "2. Difficulty walking across a room?",
+      "rise": "3. Difficulty rising from a chair?",
+      "stairs": "4. Difficulty climbing 10 stairs?",
+      "falls": "5. How many falls in the last year?"
     },
     "sarcf_options": {
-        "none": "None (0)",
-        "some": "Some (1)",
-        "lot": "A lot / Unable (2)",
-        "four": "4+ (2)"
+      "none": "None (0)",
+      "some": "Some (1)",
+      "lot": "A lot / Unable (2)",
+      "four": "4+ (2)"
     },
+    "calf_circumference": "📏 Calf Circumference",
+    "gender": "Gender",
     "calf_input": "Left calf measurement (cm)",
+    "single_leg_test": "🦩 Single-Leg Stance Test",
+    "single_leg_help": "Stand beside a chair. Lift one foot. Enter the longest time (seconds) you held it.",
     "single_leg_input": "Longest hold (seconds)",
-    "chair_stand_test": "🪑 Chair Stand Test (30-Second)",
+    "chair_stand_test": "🪑 Chair Stand Test",
     "chair_stand_help": "Sit on a chair with your arms crossed over your chest, resting on your shoulders. Stand up and sit down as many times as you can in 15 seconds.",
     "chair_stand_demo": "💡 Count how many times you can stand up completely in 15 seconds. Use a timer on your phone.",
-    "chair_stand_input": "Number of stands in 15 seconds"
-  },
+    "chair_stand_input": "Number of stands in 15 seconds",
     "process_button": "📊 Process Request",
     "email_required": "❌ Email and Username are required.",
     "no_profile": "❌ No profile found. Please check your email and username, or register as a new user.",

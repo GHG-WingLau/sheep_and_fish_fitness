@@ -3,6 +3,15 @@ import json
 from datetime import datetime
 import random
 
+# Add this at the top of app.py for testing
+import db
+try:
+    db.init_db()
+    st.success("✅ Database connected successfully!")
+except Exception as e:
+    st.error(f"❌ Database connection failed: {e}")
+    st.stop()
+
 # ---------- Import Custom Modules ----------
 from db import (
     init_db,

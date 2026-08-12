@@ -1,10 +1,12 @@
 import streamlit as st
 import json
 from datetime import datetime
+import pandas as pd
 
 # ---------- CONNECTION ----------
 def get_connection():
     """Get Neon PostgreSQL connection using st.connection."""
+    # st.connection returns a SQLConnection object
     return st.connection("neon", type="sql")
 
 # ---------- INITIALIZATION ----------
@@ -12,8 +14,12 @@ def init_db():
     """Create all required tables if they don't exist."""
     conn = get_connection()
     
+    # Use raw_connection() to get the psycopg2 connection for raw SQL
+    raw_conn = conn.raw_connection()
+    cursor = raw_conn.cursor()
+    
     # Users table
-    conn.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
@@ -30,7 +36,7 @@ def init_db():
     """)
     
     # Training progress table
-    conn.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS training_progress (
             id SERIAL PRIMARY KEY,
             user_email TEXT NOT NULL,
@@ -40,13 +46,12 @@ def init_db():
             exercise_ids TEXT,
             rpe_scores TEXT,
             session_date TEXT,
-            completed BOOLEAN DEFAULT FALSE,
-            FOREIGN KEY (user_email) REFERENCES users(email)
+            completed BOOLEAN DEFAULT FALSE
         )
     """)
     
     # Rest reflections table
-    conn.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS rest_reflections (
             id SERIAL PRIMARY KEY,
             user_email TEXT NOT NULL,
@@ -55,20 +60,50 @@ def init_db():
             day INTEGER,
             reflection TEXT,
             rest_type TEXT,
-            created_at TEXT,
-            FOREIGN KEY (user_email) REFERENCES users(email)
+            created_at TEXT
         )
     """)
     
-    conn.commit()
-    st.success("✅ Database initialized successfully!")
+    raw_conn.commit()
+    cursor.close()
+    raw_conn.close()
+    
+    # No need to print success on every run (it clutters logs)
+    # st.success("✅ Database initialized successfully!")
+
+# ---------- HELPER: Execute Query ----------
+def execute_query(sql, params=None):
+    """Execute a query that doesn't return results (INSERT, UPDATE, CREATE)."""
+    conn = get_connection()
+    raw_conn = conn.raw_connection()
+    cursor = raw_conn.cursor()
+    try:
+        if params:
+            cursor.execute(sql, params)
+        else:
+            cursor.execute(sql)
+        raw_conn.commit()
+        return True
+    except Exception as e:
+        raw_conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        raw_conn.close()
+
+def fetch_query(sql, params=None):
+    """Execute a query that returns results (SELECT)."""
+    conn = get_connection()
+    if params:
+        # Use conn.query() which returns a pandas DataFrame
+        return conn.query(sql, params=params)
+    else:
+        return conn.query(sql)
 
 # ---------- USER FUNCTIONS ----------
 def user_exists(email):
     """Check if a user with the given email exists."""
-    conn = get_connection()
-    result = conn.query("SELECT email FROM users WHERE email = %s", (email,))
-    conn.commit()
+    result = fetch_query("SELECT email FROM users WHERE email = %s", (email,))
     return len(result) > 0
 
 def register_user(email, username, result):
@@ -76,11 +111,11 @@ def register_user(email, username, result):
     if user_exists(email):
         return False, "Email already registered. Please use 'Update Profile' or login with a different email."
     
-    conn = get_connection()
-    conn.execute("""
+    sql = """
         INSERT INTO users (email, username, assessment_date, total_score, level, sarc_score, calf_score, single_score, squat_score, raw_payload)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """, (
+    """
+    params = (
         email,
         username,
         datetime.now().isoformat(),
@@ -91,21 +126,21 @@ def register_user(email, username, result):
         result['single_score'],
         result['squat_score'],
         json.dumps(result)
-    ))
-    conn.commit()
-    return True, "Registration successful! Your data has been saved."
+    )
+    try:
+        execute_query(sql, params)
+        return True, "Registration successful! Your data has been saved."
+    except Exception as e:
+        return False, f"Registration failed: {str(e)}"
 
 def update_user(email, username, result):
     """Update an existing user's profile."""
-    conn = get_connection()
-    
     # Verify both email and username match
-    verify = conn.query("SELECT email, username FROM users WHERE email = %s AND username = %s", (email, username))
+    verify = fetch_query("SELECT email, username FROM users WHERE email = %s AND username = %s", (email, username))
     if len(verify) == 0:
-        conn.commit()
         return False, "No matching user found. Please check your email and username."
     
-    conn.execute("""
+    sql = """
         UPDATE users SET
             assessment_date = %s,
             total_score = %s,
@@ -116,7 +151,8 @@ def update_user(email, username, result):
             squat_score = %s,
             raw_payload = %s
         WHERE email = %s AND username = %s
-    """, (
+    """
+    params = (
         datetime.now().isoformat(),
         result['total_score'],
         result['level'],
@@ -127,24 +163,32 @@ def update_user(email, username, result):
         json.dumps(result),
         email,
         username
-    ))
-    conn.commit()
-    return True, "Profile updated successfully!"
+    )
+    try:
+        execute_query(sql, params)
+        return True, "Profile updated successfully!"
+    except Exception as e:
+        return False, f"Update failed: {str(e)}"
 
 def retrieve_user(email, username):
     """Retrieve a user's stored profile."""
-    conn = get_connection()
-    result = conn.query("""
+    result = fetch_query("""
         SELECT email, username, assessment_date, total_score, level, sarc_score, calf_score, single_score, squat_score, raw_payload
         FROM users
         WHERE email = %s AND username = %s
     """, (email, username))
-    conn.commit()
     
     if len(result) == 0:
         return None
     
     row = result.iloc[0]
+    raw_payload = {}
+    if row['raw_payload']:
+        try:
+            raw_payload = json.loads(row['raw_payload'])
+        except:
+            raw_payload = {}
+    
     return {
         'email': row['email'],
         'username': row['username'],
@@ -155,17 +199,17 @@ def retrieve_user(email, username):
         'calf_score': row['calf_score'],
         'single_score': row['single_score'],
         'squat_score': row['squat_score'],
-        'raw_payload': json.loads(row['raw_payload']) if row['raw_payload'] else {}
+        'raw_payload': raw_payload
     }
 
 # ---------- TRAINING PROGRESS FUNCTIONS ----------
 def save_training_session(user_email, username, week, day, exercise_ids, rpe_scores, completed=False):
     """Save a training session record."""
-    conn = get_connection()
-    conn.execute("""
+    sql = """
         INSERT INTO training_progress (user_email, username, week, day, exercise_ids, rpe_scores, session_date, completed)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (
+    """
+    params = (
         user_email,
         username,
         week,
@@ -174,46 +218,41 @@ def save_training_session(user_email, username, week, day, exercise_ids, rpe_sco
         json.dumps(rpe_scores),
         datetime.now().isoformat(),
         completed
-    ))
-    conn.commit()
+    )
+    execute_query(sql, params)
 
 def get_user_progress(user_email, username):
     """Get all training progress for a user."""
-    conn = get_connection()
-    result = conn.query("""
+    return fetch_query("""
         SELECT week, day, exercise_ids, rpe_scores, session_date, completed
         FROM training_progress
         WHERE user_email = %s AND username = %s
         ORDER BY session_date DESC
     """, (user_email, username))
-    conn.commit()
-    return result
 
 def get_current_week_day(user_email, username):
     """Get the current week and day for a user."""
-    conn = get_connection()
-    result = conn.query("""
+    result = fetch_query("""
         SELECT week, day
         FROM training_progress
         WHERE user_email = %s AND username = %s
         ORDER BY session_date DESC
         LIMIT 1
     """, (user_email, username))
-    conn.commit()
     
     if len(result) == 0:
-        return 1, 1  # Default to Week 1, Day 1
+        return 1, 1
     row = result.iloc[0]
     return row['week'], row['day']
 
 # ---------- REST REFLECTION FUNCTIONS ----------
 def save_rest_reflection(user_email, username, week, day, rest_type, reflection):
     """Save a rest day reflection."""
-    conn = get_connection()
-    conn.execute("""
+    sql = """
         INSERT INTO rest_reflections (user_email, username, week, day, rest_type, reflection, created_at)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (
+    """
+    params = (
         user_email,
         username,
         week,
@@ -221,17 +260,14 @@ def save_rest_reflection(user_email, username, week, day, rest_type, reflection)
         rest_type,
         reflection,
         datetime.now().isoformat()
-    ))
-    conn.commit()
+    )
+    execute_query(sql, params)
 
 def get_rest_reflections(user_email, username):
     """Get all rest reflections for a user."""
-    conn = get_connection()
-    result = conn.query("""
+    return fetch_query("""
         SELECT week, day, rest_type, reflection, created_at
         FROM rest_reflections
         WHERE user_email = %s AND username = %s
         ORDER BY created_at DESC
     """, (user_email, username))
-    conn.commit()
-    return result
